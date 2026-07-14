@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Four motors provide lift and counter-torque simultaneously.
 
-## Implementation
-
-We build a minimal `quadcopter actuation` model in Python.
-
-Source: [`python/chapter26/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter26/main.py)  ·  [view in browser](assets/simulations/chapter26/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter26/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter26/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter26/sim.py)  ·  [view in browser](assets/simulations/chapter26/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter26/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter26/index.html)
+- Live demo: [assets/browser/chapter26/index.html](assets/browser/chapter26/index.html)
 
-```bash
-python simulations/chapter26/sim.py
-```
-
-A browser version is available at [`browser/chapter26/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter26/index.html)  ·  [run live](assets/browser/chapter26/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

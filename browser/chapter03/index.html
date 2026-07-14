@@ -2,30 +2,44 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Why Magnets Pull</title>
+<title>Chapter 03: Why Magnets Pull</title>
 <style>
-  body { font-family: sans-serif; text-align: center; }
-  canvas { border: 1px solid #ccc; margin-top: 1rem; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
+  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
-<h1>Why Magnets Pull</h1>
-<p>Browser simulation placeholder. Replace the canvas script with the chapter-specific interaction.</p>
-<canvas id="sim" width="400" height="300"></canvas>
+<h1>Chapter 03: Why Magnets Pull</h1>
+<p class="key">A magnetic field transfers force across a distance.</p>
+<canvas id="sim" width="600" height="300"></canvas>
+<script src="../common/engine.js"></script>
 <script>
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
-let t = 0;
+
+const magnet = new Body('magnet', 100, 150, { mass: 2, radius: 20, color: '#e53935' });
+const nail = new Body('nail', 500, 150, { mass: 0.5, radius: 8, color: '#607d8b' });
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.beginPath();
-  ctx.arc(200 + Math.cos(t)*80, 150 + Math.sin(t)*40, 10, 0, Math.PI*2);
-  ctx.fillStyle = '#1976d2';
-  ctx.fill();
-  t += 0.05;
+  const delta = magnet.pos.sub(nail.pos);
+  const dist = Math.max(delta.length(), 20);
+  const force = delta.div(dist).mul(30000 / (dist * dist));
+  nail.clearForces();
+  nail.addForce(force);
+  nail.step(0.016);
+  drawBody(ctx, magnet);
+  drawBody(ctx, nail);
+  drawArrow(ctx, nail.pos, magnet.pos, '#e53935');
+  ctx.fillStyle = '#333';
+  ctx.fillText(`Distance: ${dist.toFixed(1)} px`, 10, 20);
   requestAnimationFrame(draw);
 }
 draw();
+
 </script>
+<p class="home"><a href="../../index.html">← Home</a></p>
 </body>
 </html>

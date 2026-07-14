@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 A Kalman filter optimally blends prediction and measurement.
 
-## Implementation
-
-We build a minimal `Kalman filter` model in Python.
-
-Source: [`python/chapter25/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter25/main.py)  ·  [view in browser](assets/simulations/chapter25/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter25/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter25/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter25/sim.py)  ·  [view in browser](assets/simulations/chapter25/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter25/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter25/index.html)
+- Live demo: [assets/browser/chapter25/index.html](assets/browser/chapter25/index.html)
 
-```bash
-python simulations/chapter25/sim.py
-```
-
-A browser version is available at [`browser/chapter25/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter25/index.html)  ·  [run live](assets/browser/chapter25/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

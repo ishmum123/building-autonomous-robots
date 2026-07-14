@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Every sensor has noise, bias, and a different frame of reference.
 
-## Implementation
-
-We build a minimal `sensor disagreement` model in Python.
-
-Source: [`python/chapter23/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter23/main.py)  ·  [view in browser](assets/simulations/chapter23/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter23/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter23/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter23/sim.py)  ·  [view in browser](assets/simulations/chapter23/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter23/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter23/index.html)
+- Live demo: [assets/browser/chapter23/index.html](assets/browser/chapter23/index.html)
 
-```bash
-python simulations/chapter23/sim.py
-```
-
-A browser version is available at [`browser/chapter23/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter23/index.html)  ·  [run live](assets/browser/chapter23/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

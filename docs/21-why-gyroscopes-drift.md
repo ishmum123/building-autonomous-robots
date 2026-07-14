@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Integration of noisy rate measurements accumulates bias.
 
-## Implementation
-
-We build a minimal `gyroscope` model in Python.
-
-Source: [`python/chapter21/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter21/main.py)  ·  [view in browser](assets/simulations/chapter21/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter21/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter21/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter21/sim.py)  ·  [view in browser](assets/simulations/chapter21/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter21/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter21/index.html)
+- Live demo: [assets/browser/chapter21/index.html](assets/browser/chapter21/index.html)
 
-```bash
-python simulations/chapter21/sim.py
-```
-
-A browser version is available at [`browser/chapter21/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter21/index.html)  ·  [run live](assets/browser/chapter21/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

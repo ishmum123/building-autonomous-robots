@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Objects resist changes in velocity. This property is called inertia.
 
-## Implementation
-
-We build a minimal `inertia` model in Python.
-
-Source: [`python/chapter02/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter02/main.py)  ·  [view in browser](assets/simulations/chapter02/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter02/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter02/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter02/sim.py)  ·  [view in browser](assets/simulations/chapter02/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter02/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter02/index.html)
+- Live demo: [assets/browser/chapter02/index.html](assets/browser/chapter02/index.html)
 
-```bash
-python simulations/chapter02/sim.py
-```
-
-A browser version is available at [`browser/chapter02/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter02/index.html)  ·  [run live](assets/browser/chapter02/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

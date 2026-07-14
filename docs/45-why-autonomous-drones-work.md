@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Autonomy is the closed loop of sensing, thinking, and acting.
 
-## Implementation
-
-We build a minimal `full autonomy stack` model in Python.
-
-Source: [`python/chapter45/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter45/main.py)  ·  [view in browser](assets/simulations/chapter45/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter45/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter45/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter45/sim.py)  ·  [view in browser](assets/simulations/chapter45/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter45/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter45/index.html)
+- Live demo: [assets/browser/chapter45/index.html](assets/browser/chapter45/index.html)
 
-```bash
-python simulations/chapter45/sim.py
-```
-
-A browser version is available at [`browser/chapter45/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter45/index.html)  ·  [run live](assets/browser/chapter45/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

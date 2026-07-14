@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Sensors close the loop between the world and the controller.
 
-## Implementation
-
-We build a minimal `sensor` model in Python.
-
-Source: [`python/chapter19/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter19/main.py)  ·  [view in browser](assets/simulations/chapter19/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter19/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter19/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter19/sim.py)  ·  [view in browser](assets/simulations/chapter19/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter19/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter19/index.html)
+- Live demo: [assets/browser/chapter19/index.html](assets/browser/chapter19/index.html)
 
-```bash
-python simulations/chapter19/sim.py
-```
-
-A browser version is available at [`browser/chapter19/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter19/index.html)  ·  [run live](assets/browser/chapter19/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

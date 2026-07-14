@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 PID blends proportional, integral, and derivative responses.
 
-## Implementation
-
-We build a minimal `PID controller` model in Python.
-
-Source: [`python/chapter16/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter16/main.py)  ·  [view in browser](assets/simulations/chapter16/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter16/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter16/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter16/sim.py)  ·  [view in browser](assets/simulations/chapter16/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter16/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter16/index.html)
+- Live demo: [assets/browser/chapter16/index.html](assets/browser/chapter16/index.html)
 
-```bash
-python simulations/chapter16/sim.py
-```
-
-A browser version is available at [`browser/chapter16/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter16/index.html)  ·  [run live](assets/browser/chapter16/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

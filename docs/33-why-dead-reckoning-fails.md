@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Integrating velocity accumulates error without bounds.
 
-## Implementation
-
-We build a minimal `dead reckoning` model in Python.
-
-Source: [`python/chapter33/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter33/main.py)  ·  [view in browser](assets/simulations/chapter33/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter33/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter33/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter33/sim.py)  ·  [view in browser](assets/simulations/chapter33/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter33/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter33/index.html)
+- Live demo: [assets/browser/chapter33/index.html](assets/browser/chapter33/index.html)
 
-```bash
-python simulations/chapter33/sim.py
-```
-
-A browser version is available at [`browser/chapter33/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter33/index.html)  ·  [run live](assets/browser/chapter33/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

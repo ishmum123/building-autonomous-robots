@@ -2,30 +2,47 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Why Three Wires Are Better Than Two</title>
+<title>Chapter 09: Why Three Wires Are Better Than Two</title>
 <style>
-  body { font-family: sans-serif; text-align: center; }
-  canvas { border: 1px solid #ccc; margin-top: 1rem; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
+  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
-<h1>Why Three Wires Are Better Than Two</h1>
-<p>Browser simulation placeholder. Replace the canvas script with the chapter-specific interaction.</p>
-<canvas id="sim" width="400" height="300"></canvas>
+<h1>Chapter 09: Why Three Wires Are Better Than Two</h1>
+<p class="key">Three phased currents create a continuously rotating magnetic field.</p>
+<canvas id="sim" width="600" height="300"></canvas>
+<script src="../common/engine.js"></script>
 <script>
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
+
+const rotor = new Body('rotor', 300, 150, { mass: 0.5, radius: 25, color: '#1976d2' });
 let t = 0;
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.beginPath();
-  ctx.arc(200 + Math.cos(t)*80, 150 + Math.sin(t)*40, 10, 0, Math.PI*2);
-  ctx.fillStyle = '#1976d2';
-  ctx.fill();
-  t += 0.05;
+  const f = Math.sin(t) + Math.sin(t + 2.094) + Math.sin(t + 4.189);
+  rotor.clearForces();
+  rotor.addTorque(2 * f);
+  rotor.step(0.016);
+  drawBody(ctx, rotor);
+  // phase indicators
+  for (let i = 0; i < 3; i++) {
+    const v = Math.sin(t + i * 2.094);
+    ctx.fillStyle = v > 0 ? '#4caf50' : '#e53935';
+    ctx.fillRect(50 + i * 40, 250 - v * 30, 20, v * 30);
+  }
+  ctx.fillStyle = '#333';
+  ctx.fillText('Three phased currents create a rotating field', 10, 20);
+  t += 0.08;
   requestAnimationFrame(draw);
 }
 draw();
+
 </script>
+<p class="home"><a href="../../index.html">← Home</a></p>
 </body>
 </html>

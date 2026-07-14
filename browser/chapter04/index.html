@@ -2,30 +2,45 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Why Electricity Can Push</title>
+<title>Chapter 04: Why Electricity Can Push</title>
 <style>
-  body { font-family: sans-serif; text-align: center; }
-  canvas { border: 1px solid #ccc; margin-top: 1rem; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
+  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
-<h1>Why Electricity Can Push</h1>
-<p>Browser simulation placeholder. Replace the canvas script with the chapter-specific interaction.</p>
-<canvas id="sim" width="400" height="300"></canvas>
+<h1>Chapter 04: Why Electricity Can Push</h1>
+<p class="key">A current in a magnetic field experiences a mechanical force.</p>
+<canvas id="sim" width="600" height="300"></canvas>
+<script src="../common/engine.js"></script>
 <script>
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
-let t = 0;
+
+const wire = new Body('wire', 300, 240, { mass: 0.2, radius: 8, color: '#ff9800' });
+let current = false;
+setInterval(() => { current = !current; }, 1500);
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.beginPath();
-  ctx.arc(200 + Math.cos(t)*80, 150 + Math.sin(t)*40, 10, 0, Math.PI*2);
-  ctx.fillStyle = '#1976d2';
-  ctx.fill();
-  t += 0.05;
+  ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(150, 150); ctx.lineTo(450, 150); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.fillText('Magnetic field (into page)', 200, 130);
+  wire.clearForces();
+  if (current) wire.addForce(new Vec(0, -120));
+  wire.step(0.016);
+  if (wire.pos.y < 80) { wire.pos.y = 80; wire.vel.y = 0; }
+  drawBody(ctx, wire);
+  if (current) drawArrow(ctx, {x: wire.pos.x, y: wire.pos.y + 25}, {x: wire.pos.x, y: wire.pos.y - 25}, '#4caf50');
+  ctx.fillStyle = '#333';
+  ctx.fillText(current ? 'Current ON: wire jumps' : 'Current OFF: wire falls', 10, 20);
   requestAnimationFrame(draw);
 }
 draw();
+
 </script>
+<p class="home"><a href="../../index.html">← Home</a></p>
 </body>
 </html>

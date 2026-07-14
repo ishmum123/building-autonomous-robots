@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 A magnetic field transfers force across a distance.
 
-## Implementation
-
-We build a minimal `magnetic field` model in Python.
-
-Source: [`python/chapter03/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter03/main.py)  ·  [view in browser](assets/simulations/chapter03/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter03/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter03/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter03/sim.py)  ·  [view in browser](assets/simulations/chapter03/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter03/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter03/index.html)
+- Live demo: [assets/browser/chapter03/index.html](assets/browser/chapter03/index.html)
 
-```bash
-python simulations/chapter03/sim.py
-```
-
-A browser version is available at [`browser/chapter03/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter03/index.html)  ·  [run live](assets/browser/chapter03/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

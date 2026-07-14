@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Conductors shape where current flows and therefore where force is produced.
 
-## Implementation
-
-We build a minimal `winding` model in Python.
-
-Source: [`python/chapter10/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter10/main.py)  ·  [view in browser](assets/simulations/chapter10/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter10/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter10/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter10/sim.py)  ·  [view in browser](assets/simulations/chapter10/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter10/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter10/index.html)
+- Live demo: [assets/browser/chapter10/index.html](assets/browser/chapter10/index.html)
 
-```bash
-python simulations/chapter10/sim.py
-```
-
-A browser version is available at [`browser/chapter10/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter10/index.html)  ·  [run live](assets/browser/chapter10/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

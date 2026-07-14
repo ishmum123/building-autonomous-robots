@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Controllers must reject external disturbances faster than they grow.
 
-## Implementation
-
-We build a minimal `disturbance rejection` model in Python.
-
-Source: [`python/chapter29/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter29/main.py)  ·  [view in browser](assets/simulations/chapter29/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter29/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter29/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter29/sim.py)  ·  [view in browser](assets/simulations/chapter29/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter29/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter29/index.html)
+- Live demo: [assets/browser/chapter29/index.html](assets/browser/chapter29/index.html)
 
-```bash
-python simulations/chapter29/sim.py
-```
-
-A browser version is available at [`browser/chapter29/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter29/index.html)  ·  [run live](assets/browser/chapter29/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

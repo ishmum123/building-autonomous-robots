@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Aggressive control causes overshoot and oscillation.
 
-## Implementation
-
-We build a minimal `overshoot` model in Python.
-
-Source: [`python/chapter11/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter11/main.py)  ·  [view in browser](assets/simulations/chapter11/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter11/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter11/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter11/sim.py)  ·  [view in browser](assets/simulations/chapter11/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter11/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter11/index.html)
+- Live demo: [assets/browser/chapter11/index.html](assets/browser/chapter11/index.html)
 
-```bash
-python simulations/chapter11/sim.py
-```
-
-A browser version is available at [`browser/chapter11/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter11/index.html)  ·  [run live](assets/browser/chapter11/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

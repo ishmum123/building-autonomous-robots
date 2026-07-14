@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Accelerometers measure specific force, not pure acceleration.
 
-## Implementation
-
-We build a minimal `accelerometer` model in Python.
-
-Source: [`python/chapter20/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter20/main.py)  ·  [view in browser](assets/simulations/chapter20/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter20/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter20/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter20/sim.py)  ·  [view in browser](assets/simulations/chapter20/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter20/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter20/index.html)
+- Live demo: [assets/browser/chapter20/index.html](assets/browser/chapter20/index.html)
 
-```bash
-python simulations/chapter20/sim.py
-```
-
-A browser version is available at [`browser/chapter20/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter20/index.html)  ·  [run live](assets/browser/chapter20/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

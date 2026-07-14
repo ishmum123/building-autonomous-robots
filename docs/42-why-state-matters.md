@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 The right action depends on hidden state, not just current input.
 
-## Implementation
-
-We build a minimal `state representation` model in Python.
-
-Source: [`python/chapter42/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter42/main.py)  ·  [view in browser](assets/simulations/chapter42/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter42/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter42/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter42/sim.py)  ·  [view in browser](assets/simulations/chapter42/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter42/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter42/index.html)
+- Live demo: [assets/browser/chapter42/index.html](assets/browser/chapter42/index.html)
 
-```bash
-python simulations/chapter42/sim.py
-```
-
-A browser version is available at [`browser/chapter42/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter42/index.html)  ·  [run live](assets/browser/chapter42/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

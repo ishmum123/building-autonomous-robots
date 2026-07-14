@@ -286,13 +286,9 @@ docs/
 
 discoveries/
 
-simulations/
-
-python/
+browser/
 
 cpp/
-
-browser/
 
 assets/
 

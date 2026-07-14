@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Planning searches a high-dimensional space of possible motions.
 
-## Implementation
-
-We build a minimal `motion planning` model in Python.
-
-Source: [`python/chapter36/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter36/main.py)  ·  [view in browser](assets/simulations/chapter36/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter36/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter36/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter36/sim.py)  ·  [view in browser](assets/simulations/chapter36/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter36/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter36/index.html)
+- Live demo: [assets/browser/chapter36/index.html](assets/browser/chapter36/index.html)
 
-```bash
-python simulations/chapter36/sim.py
-```
-
-A browser version is available at [`browser/chapter36/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter36/index.html)  ·  [run live](assets/browser/chapter36/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

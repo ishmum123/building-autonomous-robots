@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Goals translate intent into a measure of success.
 
-## Implementation
-
-We build a minimal `objective function` model in Python.
-
-Source: [`python/chapter40/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter40/main.py)  ·  [view in browser](assets/simulations/chapter40/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter40/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter40/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter40/sim.py)  ·  [view in browser](assets/simulations/chapter40/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter40/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter40/index.html)
+- Live demo: [assets/browser/chapter40/index.html](assets/browser/chapter40/index.html)
 
-```bash
-python simulations/chapter40/sim.py
-```
-
-A browser version is available at [`browser/chapter40/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter40/index.html)  ·  [run live](assets/browser/chapter40/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

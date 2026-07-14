@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Nested controllers handle different time scales and variables.
 
-## Implementation
-
-We build a minimal `cascade control` model in Python.
-
-Source: [`python/chapter17/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter17/main.py)  ·  [view in browser](assets/simulations/chapter17/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter17/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter17/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter17/sim.py)  ·  [view in browser](assets/simulations/chapter17/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter17/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter17/index.html)
+- Live demo: [assets/browser/chapter17/index.html](assets/browser/chapter17/index.html)
 
-```bash
-python simulations/chapter17/sim.py
-```
-
-A browser version is available at [`browser/chapter17/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter17/index.html)  ·  [run live](assets/browser/chapter17/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

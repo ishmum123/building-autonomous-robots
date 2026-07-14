@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 A model lets the robot predict outcomes and choose the best sequence.
 
-## Implementation
-
-We build a minimal `model predictive control` model in Python.
-
-Source: [`python/chapter44/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter44/main.py)  ·  [view in browser](assets/simulations/chapter44/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter44/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter44/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter44/sim.py)  ·  [view in browser](assets/simulations/chapter44/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter44/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter44/index.html)
+- Live demo: [assets/browser/chapter44/index.html](assets/browser/chapter44/index.html)
 
-```bash
-python simulations/chapter44/sim.py
-```
-
-A browser version is available at [`browser/chapter44/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter44/index.html)  ·  [run live](assets/browser/chapter44/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

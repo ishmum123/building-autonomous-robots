@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Differential thrust creates torques that change attitude.
 
-## Implementation
-
-We build a minimal `torque imbalance` model in Python.
-
-Source: [`python/chapter27/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter27/main.py)  ·  [view in browser](assets/simulations/chapter27/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter27/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter27/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter27/sim.py)  ·  [view in browser](assets/simulations/chapter27/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter27/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter27/index.html)
+- Live demo: [assets/browser/chapter27/index.html](assets/browser/chapter27/index.html)
 
-```bash
-python simulations/chapter27/sim.py
-```
-
-A browser version is available at [`browser/chapter27/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter27/index.html)  ·  [run live](assets/browser/chapter27/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

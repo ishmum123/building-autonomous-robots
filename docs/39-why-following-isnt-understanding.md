@@ -16,29 +16,14 @@ Before we name anything, ask yourself:
 
 Following trajectories does not generalize to new situations.
 
-## Implementation
-
-We build a minimal `behavior cloning` model in Python.
-
-Source: [`python/chapter39/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter39/main.py)  ·  [view in browser](assets/simulations/chapter39/sim.py)
-
-Run the implementation:
-
-```bash
-python python/chapter39/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/chapter39/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter39/sim.py)  ·  [view in browser](assets/simulations/chapter39/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/chapter39/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter39/index.html)
+- Live demo: [assets/browser/chapter39/index.html](assets/browser/chapter39/index.html)
 
-```bash
-python simulations/chapter39/sim.py
-```
-
-A browser version is available at [`browser/chapter39/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter39/index.html)  ·  [run live](assets/browser/chapter39/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 

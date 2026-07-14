@@ -350,29 +350,14 @@ Before we name anything, ask yourself:
 
 {ch['idea']}
 
-## Implementation
-
-We build a minimal `{ch['key']}` model in Python.
-
-Source: [`python/{chapter_dir(i)}/main.py`]({GITHUB_BASE}/python/{chapter_dir(i)}/main.py)  ·  [view in browser](assets/simulations/{chapter_dir(i)}/sim.py)
-
-Run the implementation:
-
-```bash
-python python/{chapter_dir(i)}/main.py
-```
-
 ## Simulation
 
-Source: [`simulations/{chapter_dir(i)}/sim.py`]({GITHUB_BASE}/simulations/{chapter_dir(i)}/sim.py)  ·  [view in browser](assets/simulations/{chapter_dir(i)}/sim.py)
+Run the chapter simulation in your browser:
 
-Run the chapter simulation:
+- Source: [`browser/{chapter_dir(i)}/index.html`]({GITHUB_BASE}/browser/{chapter_dir(i)}/index.html)
+- Live demo: [assets/browser/{chapter_dir(i)}/index.html](assets/browser/{chapter_dir(i)}/index.html)
 
-```bash
-python simulations/{chapter_dir(i)}/sim.py
-```
-
-A browser version is available at [`browser/{chapter_dir(i)}/index.html`]({GITHUB_BASE}/browser/{chapter_dir(i)}/index.html)  ·  [run live](assets/browser/{chapter_dir(i)}/index.html).
+The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
 
 ## Exercises
 
@@ -404,33 +389,8 @@ def generate_discoveries(chapters):
 
 - **Problem:** {ch['problem']}
 - **Key idea:** {ch['idea']}
-- **Python:** [`python/{chapter_dir(i)}/main.py`]({GITHUB_BASE}/python/{chapter_dir(i)}/main.py)
-- **Simulation:** [`simulations/{chapter_dir(i)}/sim.py`]({GITHUB_BASE}/simulations/{chapter_dir(i)}/sim.py)
-- **Browser sim:** [`browser/{chapter_dir(i)}/index.html`]({GITHUB_BASE}/browser/{chapter_dir(i)}/index.html)
+- **Browser simulation:** [`browser/{chapter_dir(i)}/index.html`]({GITHUB_BASE}/browser/{chapter_dir(i)}/index.html)
 - **Continue:** {continue_link}
-"""
-        path.write_text(content, encoding="utf-8")
-
-
-def generate_python_stubs(chapters):
-    py_root = ROOT / "python"
-    py_root.mkdir(exist_ok=True)
-    for i, ch in enumerate(chapters, start=1):
-        d = py_root / chapter_dir(i)
-        d.mkdir(exist_ok=True)
-        path = d / "main.py"
-        content = f"""#!/usr/bin/env python3
-\"\"\"{ch['title']} — minimal implementation stub.\"\"\"
-
-
-def main():
-    print("Chapter {i:02d}: {ch['title']}")
-    # Implement the core idea from this chapter here.
-    # Start with the simplest version that demonstrates the discovery.
-
-
-if __name__ == "__main__":
-    main()
 """
         path.write_text(content, encoding="utf-8")
 
@@ -452,77 +412,6 @@ int main() {{
 }}
 """
         path.write_text(content, encoding="utf-8")
-
-
-def generate_browser_stubs(chapters):
-    browser_root = ROOT / "browser"
-    browser_root.mkdir(exist_ok=True)
-    for i, ch in enumerate(chapters, start=1):
-        d = browser_root / chapter_dir(i)
-        d.mkdir(exist_ok=True)
-        path = d / "index.html"
-        content = f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>{ch['title']}</title>
-<style>
-  body {{ font-family: sans-serif; text-align: center; }}
-  canvas {{ border: 1px solid #ccc; margin-top: 1rem; }}
-</style>
-</head>
-<body>
-<h1>{ch['title']}</h1>
-<p>Browser simulation placeholder. Replace the canvas script with the chapter-specific interaction.</p>
-<canvas id="sim" width="400" height="300"></canvas>
-<script>
-const canvas = document.getElementById('sim');
-const ctx = canvas.getContext('2d');
-let t = 0;
-function draw() {{
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.beginPath();
-  ctx.arc(200 + Math.cos(t)*80, 150 + Math.sin(t)*40, 10, 0, Math.PI*2);
-  ctx.fillStyle = '#1976d2';
-  ctx.fill();
-  t += 0.05;
-  requestAnimationFrame(draw);
-}}
-draw();
-</script>
-</body>
-</html>
-"""
-        path.write_text(content, encoding="utf-8")
-
-
-def generate_simulations(chapters):
-    sim_root = ROOT / "simulations"
-    sim_root.mkdir(exist_ok=True)
-    for i, ch in enumerate(chapters, start=1):
-        d = sim_root / chapter_dir(i)
-        d.mkdir(exist_ok=True)
-        readme = d / "README.md"
-        readme.write_text(
-            f"# {ch['title']} — Simulation\n\n"
-            f"Run `python sim.py` to launch the chapter simulation.\n",
-            encoding="utf-8",
-        )
-        sim = d / "sim.py"
-        content = f"""#!/usr/bin/env python3
-\"\"\"{ch['title']} — simulation stub.\"\"\"
-
-
-def run():
-    print("Chapter {i:02d}: {ch['title']}")
-    print("Implement the simulation for this discovery here.")
-    print("Key idea: {ch['idea']}")
-
-
-if __name__ == "__main__":
-    run()
-"""
-        sim.write_text(content, encoding="utf-8")
 
 
 def generate_mkdocs_nav(chapters):
@@ -595,22 +484,22 @@ def generate_index(chapters):
 
 
 def generate_asset_links(chapters):
-    """Create symlinks under docs/assets/ so MkDocs serves sim/browser files."""
-    assets_sim = ROOT / "docs" / "assets" / "simulations"
+    """Create symlinks under docs/assets/ so MkDocs serves browser sim files."""
     assets_browser = ROOT / "docs" / "assets" / "browser"
-    assets_sim.mkdir(parents=True, exist_ok=True)
     assets_browser.mkdir(parents=True, exist_ok=True)
+
+    # Symlink the shared engine so relative ../common/engine.js resolves
+    # both from browser/chapterXX/ and from docs/assets/browser/chapterXX/.
+    common_src = ROOT / "browser" / "common" / "engine.js"
+    common_link_dir = assets_browser / "common"
+    common_link_dir.mkdir(parents=True, exist_ok=True)
+    common_link = common_link_dir / "engine.js"
+    if common_link.exists() or common_link.is_symlink():
+        common_link.unlink()
+    common_link.symlink_to(os.path.relpath(common_src, common_link_dir))
+
     for i, _ch in enumerate(chapters, start=1):
         cdir = chapter_dir(i)
-        # simulations symlink
-        sim_src = ROOT / "simulations" / cdir / "sim.py"
-        sim_link_dir = assets_sim / cdir
-        sim_link_dir.mkdir(parents=True, exist_ok=True)
-        sim_link = sim_link_dir / "sim.py"
-        if sim_link.exists() or sim_link.is_symlink():
-            sim_link.unlink()
-        sim_link.symlink_to(os.path.relpath(sim_src, sim_link_dir))
-        # browser symlink
         browser_src = ROOT / "browser" / cdir / "index.html"
         browser_link_dir = assets_browser / cdir
         browser_link_dir.mkdir(parents=True, exist_ok=True)
@@ -623,10 +512,7 @@ def generate_asset_links(chapters):
 def main():
     generate_docs(CHAPTER_SEEDS)
     generate_discoveries(CHAPTER_SEEDS)
-    generate_python_stubs(CHAPTER_SEEDS)
     generate_cpp_stubs(CHAPTER_SEEDS)
-    generate_browser_stubs(CHAPTER_SEEDS)
-    generate_simulations(CHAPTER_SEEDS)
     generate_mkdocs_nav(CHAPTER_SEEDS)
     generate_roadmap(CHAPTER_SEEDS)
     generate_index(CHAPTER_SEEDS)

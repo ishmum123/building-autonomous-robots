@@ -6,40 +6,125 @@
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
-  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
 <h1>Chapter 29: Why Wind Wins</h1>
-<p class="key">Controllers must reject external disturbances faster than they grow.</p>
-<canvas id="sim" width="600" height="300"></canvas>
+<p class="key">A gust pushes the drone sideways. Without position feedback the disturbance accumulates. With a P+I position controller the integral term builds up and rejects the steady wind.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
 <script>
-const canvas = document.getElementById('sim');
-const ctx = canvas.getContext('2d');
-
-const quad = new Quadcopter(1.0);
-quad.body.pos = new Vec(300, 150);
-const pid = new PID(2.0, 0.1, 0.5, 0);
+const HOME_X = 140, HOME_Y = 110;
+let windX = 20, kpPos = 2.0, kiPos = 0.15;
 let t = 0;
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'No position ctrl (blown)', 'PID position ctrl (holds)', 280, 220);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let qA, qB, pidX, pidY, altA, altB;
+function initState() {
+  t = 0;
+  qA = new Quadcopter(1.0);
+  qA.body.pos = new Vec(HOME_X, HOME_Y);
+  qB = new Quadcopter(1.0);
+  qB.body.pos = new Vec(HOME_X, HOME_Y);
+  pidX = new PID(kpPos, kiPos, 0.3, HOME_X);
+  pidY = new PID(kpPos, kiPos, 0.3, HOME_Y);
+  altA = new PID(4.0, 0.1, 0.8, HOME_Y);
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Wind force', 0, 60, 5, windX, v => { windX = v; });
+UI.slider(cp, 'Pos Kp', 0.5, 6, 0.25, kpPos, v => { kpPos = v; pidX.kp = v; pidY.kp = v; });
+UI.slider(cp, 'Pos Ki', 0, 0.5, 0.02, kiPos, v => { kiPos = v; pidX.ki = v; pidY.ki = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 120, window: 400,
+  colors: ['#ff9800', '#1976d2', '#4caf50'],
+  labels: ['no ctrl drift', 'PID drift', 'zero'],
+  title: 'Lateral drift from home position during wind gust'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Wind on?', 'No-ctrl drift', 'PID drift', 'PID I term']);
+
+const G = 9.81;
+const WIND_START = 120, WIND_END = 300;
+
+function getWind(t) {
+  return (t >= WIND_START && t <= WIND_END) ? windX : 0;
+}
+
+function drawQuad(c, cx, q, label, wind) {
+  cx.clearRect(0, 0, c.width, c.height);
+  // home cross
+  cx.strokeStyle = '#4caf50'; cx.lineWidth = 1; cx.setLineDash([4, 4]);
+  cx.beginPath(); cx.moveTo(HOME_X, 0); cx.lineTo(HOME_X, c.height); cx.stroke();
+  cx.beginPath(); cx.moveTo(0, HOME_Y); cx.lineTo(c.width, HOME_Y); cx.stroke();
+  cx.setLineDash([]);
+  // wind arrow
+  if (wind > 0) {
+    drawArrow(cx, { x: 10, y: HOME_Y }, { x: 10 + wind * 0.8, y: HOME_Y }, '#e53935');
+    cx.fillStyle = '#e53935'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
+    cx.fillText('wind', 12, HOME_Y - 6);
+  }
+  const bx = Math.max(15, Math.min(265, q.body.pos.x));
+  const by = Math.max(15, Math.min(205, q.body.pos.y));
+  cx.save(); cx.translate(bx, by);
+  cx.fillStyle = q.body.color;
+  cx.fillRect(-22, -5, 44, 10);
+  cx.restore();
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 16);
+  cx.fillText('drift=' + (q.body.pos.x - HOME_X).toFixed(1), 4, 30);
+}
+
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const wind = (t > 180 && t < 420) ? new Vec(40, 0) : new Vec(0, 0);
-  quad.body.addForce(wind);
-  const torque = pid.update(quad.body.angle, 0.016);
-  quad.setMotors(8 - torque, 8 + torque);
-  quad.step(0.016);
-  drawBody(ctx, quad.body);
-  if (wind.x !== 0) drawArrow(ctx, {x: 50, y: 150}, {x: 120, y: 150}, '#e53935');
-  ctx.fillStyle = '#333';
-  ctx.fillText(`Feedback rejects wind disturbances (pitch ${quad.body.angle.toFixed(2)})`, 10, 20);
-  t++;
+  if (!state.paused) {
+    t++;
+    const wind = getWind(t);
+
+    // No ctrl: only altitude hover, no lateral control
+    qA.body.clearForces();
+    qA.body.addForce(new Vec(wind, -qA.body.mass * G));
+    const altThrA = -altA.update(qA.body.pos.y, 0.016);
+    qA.setMotors(altThrA / 2, altThrA / 2);
+    qA.body.addForce(qA.body.vel.mul(-0.5));
+    qA.step(0.016);
+    qA.body.pos.x = Math.max(10, Math.min(270, qA.body.pos.x));
+    qA.body.pos.y = Math.max(10, Math.min(210, qA.body.pos.y));
+
+    // PID ctrl: lateral + altitude
+    qB.body.clearForces();
+    qB.body.addForce(new Vec(wind, -qB.body.mass * G));
+    const fX = pidX.update(qB.body.pos.x, 0.016);
+    const fY = -pidY.update(qB.body.pos.y, 0.016);
+    qB.setMotors((fY + fX) / 2, (fY - fX) / 2);
+    qB.body.addForce(qB.body.vel.mul(-0.5));
+    qB.step(0.016);
+    qB.body.pos.x = Math.max(10, Math.min(270, qB.body.pos.x));
+    qB.body.pos.y = Math.max(10, Math.min(210, qB.body.pos.y));
+
+    plot.push(0, qA.body.pos.x - HOME_X);
+    plot.push(1, qB.body.pos.x - HOME_X);
+    plot.push(2, 0);
+    met.update([wind > 0 ? 'YES' : 'no', (qA.body.pos.x - HOME_X).toFixed(1), (qB.body.pos.x - HOME_X).toFixed(1), pidX.integral.toFixed(2)]);
+  }
+  const w = getWind(t);
+  drawQuad(canvasA, ctxA, qA, 'No pos ctrl', w);
+  drawQuad(canvasB, ctxB, qB, 'PID pos ctrl Kp=' + kpPos.toFixed(1), w);
   requestAnimationFrame(draw);
 }
 draw();
-
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>
 </body>

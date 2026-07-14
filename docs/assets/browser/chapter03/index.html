@@ -1,1 +1,94 @@
-../../../../browser/chapter03/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 03: Why Magnets Pull</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 640px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 03: Why Magnets Pull</h1>
+<p class="key">A magnetic field transfers force across a distance — force grows as 1/r².</p>
+<div id="controls"></div>
+<canvas id="sim" width="600" height="220"></canvas>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+const canvas = document.getElementById('sim');
+const ctx = canvas.getContext('2d');
+
+let fieldStrength = 30000;
+let magnet, nail;
+
+function initState() {
+  magnet = new Body('magnet', 100, 110, { mass: 999, radius: 20, color: '#e53935' });
+  nail   = new Body('nail',   500, 110, { mass: 0.5, radius: 8,  color: '#607d8b' });
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Field strength', 5000, 80000, 1000, fieldStrength, v => { fieldStrength = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 600, height: 100, window: 300,
+  colors: ['#e53935', '#ff9800'], labels: ['distance (px)', 'force (N)'],
+  title: 'Distance & Force over time'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Distance', 'Force', 'Nail speed']);
+
+function draw() {
+  if (!state.paused) {
+    const delta = magnet.pos.sub(nail.pos);
+    const dist = Math.max(delta.length(), 20);
+    const forceMag = fieldStrength / (dist * dist);
+    const forceVec = delta.div(dist).mul(forceMag);
+    nail.clearForces();
+    nail.addForce(forceVec);
+    nail.step(0.016);
+    // bounce off magnet
+    if (nail.pos.x < magnet.pos.x + magnet.radius + nail.radius) {
+      nail.pos.x = magnet.pos.x + magnet.radius + nail.radius;
+      nail.vel.x = Math.abs(nail.vel.x) * 0.3;
+    }
+    // bounce off right wall
+    if (nail.pos.x > canvas.width - 10) {
+      nail.pos.x = canvas.width - 10;
+      nail.vel.x *= -0.5;
+    }
+    plot.push(0, dist);
+    plot.push(1, forceMag);
+    met.update([dist, forceMag, nail.vel.x]);
+  }
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // field lines (visual)
+  ctx.strokeStyle = '#ffcdd2'; ctx.lineWidth = 1;
+  for (let r = 40; r <= 200; r += 40) {
+    ctx.beginPath();
+    ctx.arc(magnet.pos.x, magnet.pos.y, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  drawBody(ctx, magnet);
+  drawBody(ctx, nail);
+  drawArrow(ctx, nail.pos, { x: nail.pos.x - (nail.pos.x - magnet.pos.x) * 0.3, y: nail.pos.y }, '#e53935');
+  ctx.fillStyle = '#333'; ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('Magnet (fixed)', magnet.pos.x - 30, magnet.pos.y - 30);
+
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

@@ -1,1 +1,111 @@
-../../../../browser/chapter27/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 27: Why Quadcopters Flip</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 27: Why Quadcopters Flip</h1>
+<p class="key">Differential thrust creates torque. Without attitude control, even small imbalances cause the drone to flip. With control, differential thrust steers instead of flipping.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+let diff = 2.0, kpAtt = 3.0;
+const BASE = 9.0;
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'No attitude control (flips)', 'With attitude control', 280, 220);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let qA, qB, attPid;
+function initState() {
+  qA = new Quadcopter(1.0);
+  qA.body.pos = new Vec(140, 110); qA.body.angle = 0;
+  qB = new Quadcopter(1.0);
+  qB.body.pos = new Vec(140, 110); qB.body.angle = 0;
+  attPid = new PID(kpAtt, 0, 0.6, 0);
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Motor diff', 0, 8, 0.5, diff, v => { diff = v; });
+UI.slider(cp, 'Att Kp', 0.5, 8, 0.5, kpAtt, v => { kpAtt = v; attPid.kp = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 120, window: 400,
+  colors: ['#ff9800', '#1976d2'],
+  labels: ['uncontrolled tilt°', 'controlled tilt°'],
+  title: 'Tilt angle: uncontrolled vs attitude-controlled'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['No-ctrl tilt°', 'Ctrl tilt°', 'Motor L', 'Motor R']);
+
+function r2d(r) { return (r * 180 / Math.PI).toFixed(1); }
+
+function drawQuad(c, cx, q, label, mL, mR) {
+  cx.clearRect(0, 0, c.width, c.height);
+  cx.strokeStyle = '#ddd'; cx.setLineDash([4, 4]);
+  cx.beginPath(); cx.moveTo(0, c.height / 2); cx.lineTo(c.width, c.height / 2); cx.stroke();
+  cx.setLineDash([]);
+  const bx = Math.max(30, Math.min(250, q.body.pos.x));
+  const by = Math.max(20, Math.min(200, q.body.pos.y));
+  cx.save();
+  cx.translate(bx, by);
+  cx.rotate(q.body.angle);
+  cx.fillStyle = q.body.color;
+  cx.fillRect(-22, -5, 44, 10);
+  drawArrow(cx, { x: -18, y: 0 }, { x: -18, y: -mL * 3 }, '#ff9800');
+  drawArrow(cx, { x: 18, y: 0 }, { x: 18, y: -mR * 3 }, '#4caf50');
+  cx.restore();
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 16);
+  cx.fillText('tilt=' + r2d(q.body.angle) + '°', 4, 30);
+}
+
+function draw() {
+  if (!state.paused) {
+    // uncontrolled: fixed differential
+    qA.body.clearForces();
+    qA.body.addForce(new Vec(0, -qA.body.mass * 9.81));
+    const mAL = BASE - diff / 2, mAR = BASE + diff / 2;
+    qA.setMotors(mAL, mAR);
+    qA.step(0.016);
+    qA.body.pos.x = Math.max(20, Math.min(260, qA.body.pos.x));
+    qA.body.pos.y = Math.max(10, Math.min(210, qA.body.pos.y));
+
+    // controlled: attitude PID corrects for imbalance
+    const torqueCmd = attPid.update(qB.body.angle, 0.016);
+    qB.body.clearForces();
+    qB.body.addForce(new Vec(0, -qB.body.mass * 9.81));
+    const mBL = BASE - diff / 2 - torqueCmd;
+    const mBR = BASE + diff / 2 + torqueCmd;
+    qB.setMotors(mBL, mBR);
+    qB.step(0.016);
+    qB.body.pos.x = Math.max(20, Math.min(260, qB.body.pos.x));
+    qB.body.pos.y = Math.max(10, Math.min(210, qB.body.pos.y));
+
+    plot.push(0, qA.body.angle * 180 / Math.PI);
+    plot.push(1, qB.body.angle * 180 / Math.PI);
+    met.update([r2d(qA.body.angle), r2d(qB.body.angle), mBL.toFixed(1), mBR.toFixed(1)]);
+  }
+  drawQuad(canvasA, ctxA, qA, 'No att ctrl (diff=' + diff.toFixed(1) + ')', BASE - diff/2, BASE + diff/2);
+  drawQuad(canvasB, ctxB, qB, 'Att ctrl Kp=' + kpAtt.toFixed(1), BASE - diff/2, BASE + diff/2);
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

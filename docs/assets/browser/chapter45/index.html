@@ -1,1 +1,143 @@
-../../../../browser/chapter45/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 45: Why Autonomous Drones Work</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 45: Why Autonomous Drones Work</h1>
+<p class="key">Full autonomy = perception + state estimation + planning + control. Remove any layer and the drone fails.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+const W = 280, H = 250, HOME_X = 140, HOME_Y = 60;
+const WAYPOINTS = [[60,60],[220,60],[220,180],[60,180],[140,60]];
+let gpsNoise = 1.5, windX = 15, kpPos = 2.5;
+let qA, qB, gpsA, gpsB, kfx, kfy, pidAx, pidAy, pidBx, pidBy, wpIdx, t;
+
+function initState() {
+  t = 0; wpIdx = 0;
+  qA = new Quadcopter(1.0); qA.body.pos = new Vec(HOME_X, HOME_Y);
+  qB = new Quadcopter(1.0); qB.body.pos = new Vec(HOME_X, HOME_Y);
+  gpsA = new GPS(gpsNoise, 10); gpsB = new GPS(gpsNoise, 10);
+  kfx = new Kalman1D(0.1, gpsNoise); kfx.x = HOME_X;
+  kfy = new Kalman1D(0.1, gpsNoise); kfy.x = HOME_Y;
+  pidAx = new PID(kpPos, 0.05, 0.4, HOME_X); pidAy = new PID(kpPos, 0.05, 0.4, HOME_Y);
+  pidBx = new PID(kpPos, 0.05, 0.4, HOME_X); pidBy = new PID(kpPos, 0.05, 0.4, HOME_Y);
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'GPS noise', 0.5, 6, 0.5, gpsNoise, v => { gpsNoise = v; });
+UI.slider(cp, 'Wind force', 0, 40, 5, windX, v => { windX = v; });
+UI.slider(cp, 'Pos Kp', 0.5, 6, 0.25, kpPos, v => { kpPos = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'No estimation (raw GPS)', 'Full autonomy (Kalman+plan)', W, H);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 100, window: 300,
+  colors: ['#e53935', '#1976d2'],
+  labels: ['raw GPS error', 'Kalman error'],
+  title: 'Position error from waypoint target'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Frame', 'WP', 'Raw err', 'Kalman err', 'Wind']);
+
+const G = 9.81;
+
+function stepQuad(q, pid_x, pid_y, targetX, targetY, wind, dt) {
+  q.body.clearForces();
+  q.body.addForce(new Vec(wind, 0));
+  const fx = -pid_x.update(q.body.pos.x, dt);
+  const fy = -pid_y.update(q.body.pos.y, dt);
+  const gravComp = q.body.mass * G;
+  q.setMotors((gravComp + fy + fx) / 2, (gravComp + fy - fx) / 2);
+  q.body.addForce(q.body.vel.mul(-0.6));
+  q.step(dt);
+  q.body.pos.x = Math.max(5, Math.min(W-5, q.body.pos.x));
+  q.body.pos.y = Math.max(5, Math.min(H-5, q.body.pos.y));
+}
+
+function atWaypoint(q, wp) {
+  return Math.hypot(q.body.pos.x - wp[0], q.body.pos.y - wp[1]) < 15;
+}
+
+function drawDrone(cx, cv, q, wpPos, label, gpsReading) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  // draw waypoints
+  for (let i = 0; i < WAYPOINTS.length; i++) {
+    const [wx, wy] = WAYPOINTS[i];
+    cx.fillStyle = i === wpIdx ? '#ff9800' : 'rgba(255,152,0,0.3)';
+    cx.beginPath(); cx.arc(wx, wy, 8, 0, Math.PI*2); cx.fill();
+    cx.fillStyle = '#555'; cx.font = '9px sans-serif'; cx.textAlign = 'center';
+    cx.fillText(i+1, wx, wy + 3);
+  }
+  // draw GPS fix
+  if (gpsReading) drawPoint(cx, gpsReading.x, gpsReading.y, '#e53935', 4);
+  // draw drone
+  cx.save(); cx.translate(q.body.pos.x, q.body.pos.y); cx.rotate(q.body.angle);
+  cx.fillStyle = q.body.color; cx.fillRect(-20, -5, 40, 10);
+  cx.restore();
+  cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 14);
+}
+
+let lastGpsA = null, lastGpsB = null;
+
+function draw() {
+  if (!state.paused) {
+    t++;
+    const wp = WAYPOINTS[wpIdx % WAYPOINTS.length];
+    const dt = 0.016;
+
+    // Side A: raw GPS used directly
+    const fixA = gpsA.read(qA);
+    if (fixA) { lastGpsA = fixA; pidAx.setpoint = wp[0]; pidAy.setpoint = wp[1]; }
+    const posAx = lastGpsA ? lastGpsA.x : qA.body.pos.x;
+    const posAy = lastGpsA ? lastGpsA.y : qA.body.pos.y;
+    const tmpPidAx = new PID(kpPos, 0.05, 0.4, wp[0]); tmpPidAx.lastError = pidAx.lastError; tmpPidAx.integral = pidAx.integral;
+    const tmpPidAy = new PID(kpPos, 0.05, 0.4, wp[1]); tmpPidAy.lastError = pidAy.lastError; tmpPidAy.integral = pidAy.integral;
+    pidAx.setpoint = wp[0]; pidAy.setpoint = wp[1];
+    stepQuad(qA, pidAx, pidAy, wp[0], wp[1], windX, dt);
+
+    // Side B: Kalman-filtered GPS, then PID
+    const fixB = gpsB.read(qB);
+    if (fixB) { lastGpsB = fixB; kfx.update(fixB.x); kfy.update(fixB.y); }
+    kfx.predict(dt, 0); kfy.predict(dt, 0);
+    pidBx.setpoint = wp[0]; pidBy.setpoint = wp[1];
+    stepQuad(qB, pidBx, pidBy, wp[0], wp[1], windX, dt);
+
+    const errA = Math.hypot(qA.body.pos.x - wp[0], qA.body.pos.y - wp[1]);
+    const errB = Math.hypot(qB.body.pos.x - wp[0], qB.body.pos.y - wp[1]);
+
+    // advance waypoint when both close
+    if (atWaypoint(qB, wp)) wpIdx = (wpIdx + 1) % WAYPOINTS.length;
+
+    plot.push(0, errA);
+    plot.push(1, errB);
+    met.update([t, wpIdx + 1, errA.toFixed(1), errB.toFixed(1), windX.toFixed(0)]);
+  }
+  const wp = WAYPOINTS[wpIdx % WAYPOINTS.length];
+  drawDrone(ctxA, canvasA, qA, wp, 'Raw GPS ctrl', lastGpsA);
+  drawDrone(ctxB, canvasB, qB, wp, 'Kalman + plan', lastGpsB);
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

@@ -6,37 +6,86 @@
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
-  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .key { color: #555; max-width: 680px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
 <h1>Chapter 02: Why Things Refuse to Move</h1>
-<p class="key">Objects resist changes in velocity. This property is called inertia.</p>
-<canvas id="sim" width="600" height="300"></canvas>
+<p class="key">Objects resist changes in velocity — inertia scales with mass. Same force, different mass, different result.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
 <script>
-const canvas = document.getElementById('sim');
-const ctx = canvas.getContext('2d');
+const groundY = 190;
+let pushForce = 50;
 
-const groundY = 250;
-const crate = new Body('crate', 50, groundY - 30, { mass: 10, radius: 30, color: '#795548' });
+// A/B side by side: light crate vs heavy crate
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Light (mass=1)', 'Heavy (mass=10)', 290, 220);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let lightCrate, heavyCrate;
+function initState() {
+  lightCrate = new Body('light', 50, groundY - 20, { mass: 1,  radius: 20, color: '#1976d2' });
+  heavyCrate = new Body('heavy', 50, groundY - 20, { mass: 10, radius: 20, color: '#795548' });
+}
+initState();
+
+// Controls
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Push force', 0, 200, 5, pushForce, v => { pushForce = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+// Strip plot
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 590, height: 100, window: 400,
+  colors: ['#1976d2', '#795548'], labels: ['light speed', 'heavy speed'],
+  title: 'Speed comparison (same force, different mass)'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Light speed', 'Heavy speed', 'Force']);
+
+function drawCrate(c, c_ctx, cw) {
+  c_ctx.clearRect(0, 0, cw, 220);
+  c_ctx.fillStyle = '#8d6e63';
+  c_ctx.fillRect(0, groundY, cw, 220 - groundY);
+  c_ctx.fillStyle = c.color;
+  const half = c.radius;
+  c_ctx.fillRect(c.pos.x - half, c.pos.y - half, half * 2, half * 2);
+  drawArrow(c_ctx,
+    { x: c.pos.x - half - 10, y: c.pos.y },
+    { x: c.pos.x + half + 10, y: c.pos.y },
+    '#ff9800');
+  c_ctx.fillStyle = '#333'; c_ctx.font = '11px sans-serif'; c_ctx.textAlign = 'left';
+  c_ctx.fillText('v=' + c.vel.x.toFixed(2) + ' px/s', 4, 16);
+}
+
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#8d6e63';
-  ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
-  crate.clearForces();
-  crate.addForce(new Vec(50, 0)); // gentle push
-  crate.step(0.016);
-  drawBody(ctx, crate);
-  drawArrow(ctx, {x: crate.pos.x - 35, y: crate.pos.y}, {x: crate.pos.x + 35, y: crate.pos.y}, '#ff9800');
-  ctx.fillStyle = '#333';
-  ctx.fillText(`Velocity: ${crate.vel.x.toFixed(3)} px/s (heavy object barely moves)`, 10, 20);
+  if (!state.paused) {
+    lightCrate.clearForces();
+    lightCrate.addForce(new Vec(pushForce, 0));
+    lightCrate.step(0.016);
+    if (lightCrate.pos.x > canvasA.width + 30) lightCrate.pos.x = -30;
+
+    heavyCrate.clearForces();
+    heavyCrate.addForce(new Vec(pushForce, 0));
+    heavyCrate.step(0.016);
+    if (heavyCrate.pos.x > canvasB.width + 30) heavyCrate.pos.x = -30;
+
+    plot.push(0, lightCrate.vel.x);
+    plot.push(1, heavyCrate.vel.x);
+    met.update([lightCrate.vel.x, heavyCrate.vel.x, pushForce]);
+  }
+  drawCrate(lightCrate, ctxA, canvasA.width);
+  drawCrate(heavyCrate, ctxB, canvasB.width);
   requestAnimationFrame(draw);
 }
 draw();
-
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>
 </body>

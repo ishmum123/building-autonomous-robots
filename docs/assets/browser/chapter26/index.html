@@ -1,1 +1,106 @@
-../../../../browser/chapter26/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 26: Why Four Motors Beat One</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 26: Why Four Motors Beat One</h1>
+<p class="key">One motor produces lift but also torque that spins the body. Four motors can balance torques while still generating net lift.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+let thrustLevel = 9.8;
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Single motor (spins)', 'Balanced motors (stable)', 280, 220);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let qA, qB;
+function initState() {
+  qA = new Quadcopter(1.0);
+  qA.body.pos = new Vec(140, 120); qA.body.angle = 0;
+  qB = new Quadcopter(1.0);
+  qB.body.pos = new Vec(140, 120); qB.body.angle = 0;
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Thrust', 5, 20, 0.5, thrustLevel, v => { thrustLevel = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 120, window: 400,
+  colors: ['#ff9800', '#1976d2'],
+  labels: ['single motor spin°', 'balanced tilt°'],
+  title: 'Body angle: single motor vs balanced four motors'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Single tilt°', 'Single alt', 'Balanced tilt°', 'Balanced alt']);
+
+function r2d(r) { return (r * 180 / Math.PI).toFixed(1); }
+
+function drawQuad(c, cx, q, label, motorL, motorR) {
+  cx.clearRect(0, 0, c.width, c.height);
+  // hover target line
+  cx.strokeStyle = '#4caf5055'; cx.setLineDash([4, 4]);
+  cx.beginPath(); cx.moveTo(0, 80); cx.lineTo(c.width, 80); cx.stroke();
+  cx.setLineDash([]);
+  const bx = q.body.pos.x, by = q.body.pos.y, ang = q.body.angle;
+  cx.save();
+  cx.translate(bx, by);
+  cx.rotate(ang);
+  cx.fillStyle = q.body.color;
+  cx.fillRect(-22, -5, 44, 10);
+  // motor arrows
+  const scaleT = 3;
+  drawArrow(cx, { x: -18, y: 0 }, { x: -18, y: -motorL * scaleT }, '#4caf50');
+  drawArrow(cx, { x: 18, y: 0 }, { x: 18, y: -motorR * scaleT }, '#4caf50');
+  cx.restore();
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 16);
+  cx.fillText('tilt=' + r2d(ang) + '°  alt=' + by.toFixed(0), 4, 30);
+}
+
+function draw() {
+  if (!state.paused) {
+    // single motor: only left motor runs
+    qA.body.clearForces();
+    qA.body.addForce(new Vec(0, -qA.body.mass * 9.81));
+    qA.setMotors(thrustLevel, 0);
+    qA.step(0.016);
+    qA.body.pos.x = Math.max(30, Math.min(250, qA.body.pos.x));
+    qA.body.pos.y = Math.max(20, Math.min(200, qA.body.pos.y));
+
+    // balanced: both motors equal
+    qB.body.clearForces();
+    qB.body.addForce(new Vec(0, -qB.body.mass * 9.81));
+    qB.setMotors(thrustLevel / 2, thrustLevel / 2);
+    qB.step(0.016);
+    qB.body.pos.x = Math.max(30, Math.min(250, qB.body.pos.x));
+    qB.body.pos.y = Math.max(20, Math.min(200, qB.body.pos.y));
+
+    plot.push(0, qA.body.angle * 180 / Math.PI);
+    plot.push(1, qB.body.angle * 180 / Math.PI);
+    met.update([r2d(qA.body.angle), qA.body.pos.y, r2d(qB.body.angle), qB.body.pos.y]);
+  }
+  drawQuad(canvasA, ctxA, qA, 'Single motor (torque)', thrustLevel, 0);
+  drawQuad(canvasB, ctxB, qB, 'Balanced motors', thrustLevel / 2, thrustLevel / 2);
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

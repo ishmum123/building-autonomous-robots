@@ -1,1 +1,107 @@
-../../../../browser/chapter19/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 19: Why Robots Need Senses</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 19: Why Robots Need Senses</h1>
+<p class="key">Without sensors a robot drives open-loop into walls. With a range sensor it can stop and hold position near the obstacle.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+const WALL_X = 250;
+let driveForce = 40, stopDist = 60;
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Blind (no sensor)', 'Sighted (range sensor)', 280, 180);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let robotA, robotB, pidB;
+function initState() {
+  robotA = new Body('A', 20, 90, { mass: 1, radius: 12, color: '#ff9800' });
+  robotB = new Body('B', 20, 90, { mass: 1, radius: 12, color: '#1976d2' });
+  pidB = new PID(2.0, 0.1, 0.5, WALL_X - stopDist);
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Drive force', 5, 80, 5, driveForce, v => { driveForce = v; });
+UI.slider(cp, 'Stop dist', 20, 100, 5, stopDist, v => { stopDist = v; pidB.setpoint = WALL_X - v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 110, window: 400,
+  colors: ['#ff9800', '#1976d2'],
+  labels: ['blind pos', 'sighted pos'],
+  title: 'Robot position: blind vs sighted'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Blind pos', 'Blind spd', 'Sighted pos', 'Range']);
+
+function drawRobot(c, cx, robot, label, crashed) {
+  cx.clearRect(0, 0, c.width, c.height);
+  // floor
+  cx.fillStyle = '#e0e0e0'; cx.fillRect(0, 115, c.width, 40);
+  // wall
+  cx.fillStyle = '#795548'; cx.fillRect(WALL_X, 60, 15, 90);
+  // stop-dist indicator (sighted side)
+  if (!crashed) {
+    cx.strokeStyle = '#1976d244'; cx.setLineDash([4, 4]);
+    cx.beginPath(); cx.moveTo(WALL_X - stopDist, 60); cx.lineTo(WALL_X - stopDist, 150); cx.stroke();
+    cx.setLineDash([]);
+  }
+  drawBody(cx, robot);
+  if (crashed) {
+    cx.fillStyle = '#e53935'; cx.font = 'bold 13px sans-serif'; cx.textAlign = 'center';
+    cx.fillText('CRASHED!', c.width / 2, 40);
+  }
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 18);
+  cx.fillText('x=' + robot.pos.x.toFixed(0), 4, 32);
+}
+
+let crashedA = false;
+function draw() {
+  if (!state.paused) {
+    // blind: constant drive
+    if (!crashedA) {
+      robotA.clearForces();
+      robotA.addForce(new Vec(driveForce, 0));
+      robotA.addForce(robotA.vel.mul(-0.5));
+      robotA.step(0.016);
+      if (robotA.pos.x >= WALL_X - 12) { robotA.pos.x = WALL_X - 12; robotA.vel.x = 0; crashedA = true; }
+    }
+    // sighted: PID to stop-dist
+    robotB.clearForces();
+    pidB.setpoint = WALL_X - stopDist;
+    robotB.addForce(new Vec(pidB.update(robotB.pos.x, 0.016), 0));
+    robotB.addForce(robotB.vel.mul(-1));
+    robotB.step(0.016);
+    robotB.pos.x = Math.min(WALL_X - 13, robotB.pos.x);
+
+    const range = WALL_X - robotB.pos.x;
+    plot.push(0, robotA.pos.x);
+    plot.push(1, robotB.pos.x);
+    met.update([robotA.pos.x, robotA.vel.x, robotB.pos.x, range]);
+  }
+  drawRobot(canvasA, ctxA, robotA, 'Blind robot', crashedA);
+  drawRobot(canvasB, ctxB, robotB, 'Sighted (stop=' + stopDist + 'px)', false);
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

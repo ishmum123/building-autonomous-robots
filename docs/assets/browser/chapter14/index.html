@@ -1,1 +1,103 @@
-../../../../browser/chapter14/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 14: Why Guessing Isn't Control</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 14: Why Guessing Isn't Control</h1>
+<p class="key">Same command, different result. Without measurement you cannot correct for what you cannot see.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+const TARGET = 240;
+let fixedForce = 25, distStrength = 20, kp = 1.5;
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Open-loop (guessing)', 'Closed-loop (measuring)', 285, 200);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let guesser, measurer, pid, t;
+function initState() {
+  guesser  = new Body('g', 30, 100, { mass: 1, radius: 12, color: '#ff9800' });
+  measurer = new Body('m', 30, 100, { mass: 1, radius: 12, color: '#1976d2' });
+  pid = new PID(kp, 0.05, 0.3, TARGET);
+  t = 0;
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Fixed force', 5, 60, 1, fixedForce, v => { fixedForce = v; });
+UI.slider(cp, 'Disturbance', 0, 60, 2, distStrength, v => { distStrength = v; });
+UI.slider(cp, 'Kp (measurer)', 0.5, 5, 0.1, kp, v => { kp = v; pid.kp = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 110, window: 400,
+  colors: ['#ff9800', '#1976d2'], labels: ['guesser error', 'measurer error'],
+  title: 'Position error over time: open-loop vs closed-loop'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Guesser pos', 'Measurer pos', 'Guesser err', 'Measurer err']);
+
+// wind gust: active between t=150..350
+function gust(t) {
+  return (t > 150 && t < 350) ? -distStrength : 0;
+}
+
+function drawBot(c_ctx, cw, ch, plant, targetX, label, color) {
+  c_ctx.clearRect(0, 0, cw, ch);
+  c_ctx.strokeStyle = '#ddd'; c_ctx.setLineDash([4, 4]);
+  c_ctx.beginPath(); c_ctx.moveTo(targetX, 0); c_ctx.lineTo(targetX, ch); c_ctx.stroke();
+  c_ctx.setLineDash([]);
+  c_ctx.fillStyle = '#4caf50'; c_ctx.beginPath(); c_ctx.arc(targetX, ch / 2, 5, 0, Math.PI * 2); c_ctx.fill();
+  drawBody(c_ctx, plant);
+  c_ctx.fillStyle = '#333'; c_ctx.font = '11px sans-serif'; c_ctx.textAlign = 'left';
+  c_ctx.fillText(label, 4, 16);
+  c_ctx.fillText('pos=' + plant.pos.x.toFixed(0) + ' err=' + (plant.pos.x - targetX).toFixed(0), 4, 30);
+}
+
+function draw() {
+  if (!state.paused) {
+    t++;
+    const g = gust(t);
+
+    guesser.clearForces();
+    guesser.addForce(new Vec(fixedForce, 0));
+    guesser.addForce(new Vec(g, 0));
+    guesser.addForce(guesser.vel.mul(-1.5));
+    guesser.step(0.016);
+    if (guesser.pos.x > 270) { guesser.pos.x = 270; guesser.vel.x = 0; }
+
+    measurer.clearForces();
+    measurer.addForce(new Vec(pid.update(measurer.pos.x, 0.016), 0));
+    measurer.addForce(new Vec(g, 0));
+    measurer.addForce(measurer.vel.mul(-1.5));
+    measurer.step(0.016);
+    if (measurer.pos.x > 270) { measurer.pos.x = 270; measurer.vel.x = 0; }
+    if (measurer.pos.x < 0) { measurer.pos.x = 0; measurer.vel.x = 0; }
+
+    plot.push(0, guesser.pos.x - TARGET);
+    plot.push(1, measurer.pos.x - TARGET);
+    met.update([guesser.pos.x, measurer.pos.x, guesser.pos.x - TARGET, measurer.pos.x - TARGET]);
+  }
+  drawBot(ctxA, canvasA.width, canvasA.height, guesser, TARGET, 'Guesser (fixed cmd)', '#ff9800');
+  drawBot(ctxB, canvasB.width, canvasB.height, measurer, TARGET, 'Measurer (feedback)', '#1976d2');
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

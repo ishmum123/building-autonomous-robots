@@ -1,1 +1,98 @@
-../../../../browser/chapter21/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 21: Why Gyroscopes Drift</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 21: Why Gyroscopes Drift</h1>
+<p class="key">Integrating a biased noisy rate accumulates error over time. Left side shows raw integration (drifts); right shows truth for comparison.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+let bias = 0.005, noiseStd = 0.01, trueRate = 0.05;
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Gyro estimate (drifts)', 'True angle', 280, 200);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let trueAngle, estAngle, gyro;
+function initState() {
+  trueAngle = 0; estAngle = 0;
+  gyro = new Gyroscope(noiseStd, bias);
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Gyro bias', 0, 0.02, 0.001, bias, v => { bias = v; gyro.bias = v; });
+UI.slider(cp, 'Noise std', 0, 0.05, 0.002, noiseStd, v => { noiseStd = v; gyro.noiseStd = v; });
+UI.slider(cp, 'True rate', -0.2, 0.2, 0.01, trueRate, v => { trueRate = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 120, window: 400,
+  colors: ['#e53935', '#4caf50'],
+  labels: ['gyro angle (drift)', 'true angle'],
+  title: 'Angle over time: gyro integration vs truth'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['True angle°', 'Gyro est°', 'Drift°', 'Bias']);
+
+const DT = 0.016;
+const mockBody = { angularVel: trueRate };
+
+function drawAngleIndicator(c, cx, angle, label, color) {
+  cx.clearRect(0, 0, c.width, c.height);
+  const cx2 = c.width / 2, cy2 = c.height / 2;
+  const R = 60;
+  // dial background
+  cx.strokeStyle = '#ddd'; cx.lineWidth = 2;
+  cx.beginPath(); cx.arc(cx2, cy2, R, 0, Math.PI * 2); cx.stroke();
+  // needle
+  cx.strokeStyle = color; cx.lineWidth = 3;
+  cx.beginPath();
+  cx.moveTo(cx2, cy2);
+  cx.lineTo(cx2 + R * Math.sin(angle), cy2 - R * Math.cos(angle));
+  cx.stroke();
+  // tick at 0
+  cx.strokeStyle = '#aaa'; cx.lineWidth = 1;
+  cx.beginPath(); cx.moveTo(cx2, cy2 - R - 4); cx.lineTo(cx2, cy2 - R + 4); cx.stroke();
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 16);
+  cx.fillText((angle * 180 / Math.PI).toFixed(1) + '°', 4, 30);
+}
+
+function draw() {
+  if (!state.paused) {
+    mockBody.angularVel = trueRate;
+    trueAngle += trueRate * DT;
+    estAngle += gyro.read(mockBody) * DT;
+    plot.push(0, estAngle * 180 / Math.PI);
+    plot.push(1, trueAngle * 180 / Math.PI);
+    met.update([
+      (trueAngle * 180 / Math.PI),
+      (estAngle * 180 / Math.PI),
+      ((estAngle - trueAngle) * 180 / Math.PI),
+      bias
+    ]);
+  }
+  drawAngleIndicator(canvasA, ctxA, estAngle % (2 * Math.PI), 'Gyro estimate (drifts)', '#e53935');
+  drawAngleIndicator(canvasB, ctxB, trueAngle % (2 * Math.PI), 'Truth', '#4caf50');
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

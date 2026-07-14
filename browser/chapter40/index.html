@@ -6,33 +6,98 @@
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
-  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
 <h1>Chapter 40: Why Robots Need Goals</h1>
-<p class="key">Goals translate intent into a measure of success.</p>
-<canvas id="sim" width="600" height="300"></canvas>
+<p class="key">No-goal robot wanders aimlessly. Goal-directed robot drives straight to the target.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
 <script>
-const canvas = document.getElementById('sim');
-const ctx = canvas.getContext('2d');
+const W = 280, H = 220, GX = 240, GY = 110;
+let goalKp = 3.0, randForce = 1.5;
+let rA, rB, pidBx, pidBy, t;
 
-const state = 100, goal = 500;
+function initState() {
+  t = 0;
+  rA = new Body('wanderer', 30, 110, { mass: 1, radius: 8, color: '#e53935' });
+  rB = new Body('goal', 30, 110, { mass: 1, radius: 8, color: '#1976d2' });
+  pidBx = new PID(goalKp, 0, 0.5, GX);
+  pidBy = new PID(goalKp, 0, 0.5, GY);
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Goal Kp', 0.5, 8, 0.5, goalKp, v => { goalKp = v; pidBx && (pidBx.kp = v); pidBy && (pidBy.kp = v); });
+UI.slider(cp, 'Random force', 0, 4, 0.5, randForce, v => { randForce = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'No goal (wandering)', 'Goal-directed', W, H);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 100, window: 300,
+  colors: ['#e53935', '#1976d2'],
+  labels: ['dist (no goal)', 'dist (goal)'],
+  title: 'Distance to goal over time'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Frame', 'Wander dist', 'Goal dist', 'Reached?']);
+
+function drawSide(cx, cv, body, label) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  drawPoint(cx, GX, GY, '#ff9800', 10);
+  cx.fillStyle = '#ff9800'; cx.font = '10px sans-serif'; cx.textAlign = 'center';
+  cx.fillText('GOAL', GX, GY - 14);
+  drawBody(cx, body, { radius: 8 });
+  const dist = Math.hypot(body.pos.x - GX, body.pos.y - GY);
+  cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 14);
+  cx.fillText('dist=' + dist.toFixed(1), 4, 27);
+}
+
+const DRAG = 0.8;
+
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawPoint(ctx, state, 150, '#1976d2', 8);
-  drawPoint(ctx, goal, 150, '#4caf50', 8);
-  ctx.strokeStyle = '#999'; ctx.setLineDash([5, 5]);
-  ctx.beginPath(); ctx.moveTo(state, 150); ctx.lineTo(goal, 150); ctx.stroke(); ctx.setLineDash([]);
-  ctx.fillStyle = '#333';
-  ctx.fillText(`Cost to goal: ${Math.abs(goal - state)} — goals translate intent into a measure of success`, 10, 20);
+  if (!state.paused) {
+    t++;
+    // wanderer: random forces only
+    rA.clearForces();
+    rA.addForce(new Vec(gaussianRandom(randForce * 8), gaussianRandom(randForce * 8)));
+    rA.addForce(rA.vel.mul(-DRAG));
+    rA.step(0.016);
+    rA.pos.x = Math.max(10, Math.min(W-10, rA.pos.x));
+    rA.pos.y = Math.max(10, Math.min(H-10, rA.pos.y));
+
+    // goal-directed: PID toward goal + small random disturbance
+    rB.clearForces();
+    const fx = -pidBx.update(rB.pos.x, 0.016);
+    const fy = -pidBy.update(rB.pos.y, 0.016);
+    rB.addForce(new Vec(fx + gaussianRandom(randForce), fy + gaussianRandom(randForce)));
+    rB.addForce(rB.vel.mul(-DRAG));
+    rB.step(0.016);
+    rB.pos.x = Math.max(10, Math.min(W-10, rB.pos.x));
+    rB.pos.y = Math.max(10, Math.min(H-10, rB.pos.y));
+
+    const dA = Math.hypot(rA.pos.x - GX, rA.pos.y - GY);
+    const dB = Math.hypot(rB.pos.x - GX, rB.pos.y - GY);
+    plot.push(0, dA);
+    plot.push(1, dB);
+    met.update([t, dA.toFixed(1), dB.toFixed(1), dB < 12 ? 'YES' : 'no']);
+  }
+  drawSide(ctxA, canvasA, rA, 'Random walk');
+  drawSide(ctxB, canvasB, rB, 'Goal PID Kp=' + goalKp.toFixed(1));
   requestAnimationFrame(draw);
 }
 draw();
-
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>
 </body>

@@ -1,1 +1,99 @@
-../../../../browser/chapter36/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 36: Why Planning Is Hard</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 36: Why Planning Is Hard</h1>
+<p class="key">Greedy straight-line navigation crashes into walls. A planner finds the safe detour.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+const CELL = 34, COLS = 12, ROWS = 8, OX = 8, OY = 16;
+const START = [0, 0], GOAL = [COLS-1, ROWS-1];
+let wallLen = 6;
+let grid, path, stepA, stepB, t, stuckA;
+
+function buildGrid() {
+  grid = new Grid(COLS, ROWS);
+  for (let y = 0; y < wallLen; y++) grid.block(5, y);
+}
+
+function initState() {
+  t = 0; stepA = 0; stepB = 0; stuckA = false;
+  buildGrid();
+  path = astar(grid, START, GOAL);
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Wall length', 2, ROWS, 1, wallLen, v => { wallLen = v; initState(); });
+const { state } = UI.pauseResetBar(cp, initState);
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Greedy step', 'Planned step', 'Plan length', 'Greedy stuck?']);
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Greedy (straight-line)', 'Planned (A*)', 418, 292);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+// Greedy walk: move toward goal, stop if blocked
+function greedyPos(step) {
+  let x = START[0], y = START[1];
+  for (let i = 0; i < step; i++) {
+    const gx = GOAL[0], gy = GOAL[1];
+    const dx = Math.sign(gx - x), dy = Math.sign(gy - y);
+    let moved = false;
+    for (const [nx, ny] of [[x+dx, y+dy],[x+dx,y],[x,y+dy]]) {
+      if (nx>=0&&nx<COLS&&ny>=0&&ny<ROWS&&!grid.isBlocked(nx,ny)) {
+        x=nx; y=ny; moved=true; break;
+      }
+    }
+    if (!moved) { stuckA = true; break; }
+  }
+  return [x, y];
+}
+
+function drawSide(cx, cv, robotCell, pathToDraw, label) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  drawGrid(cx, grid, { cell: CELL, ox: OX, oy: OY });
+  if (pathToDraw) drawGridPath(cx, pathToDraw, { cell: CELL, ox: OX, oy: OY });
+  drawPoint(cx, OX + START[0]*CELL + CELL/2, OY + START[1]*CELL + CELL/2, '#4caf50', 7);
+  drawPoint(cx, OX + GOAL[0]*CELL + CELL/2, OY + GOAL[1]*CELL + CELL/2, '#ff9800', 7);
+  if (robotCell) drawPoint(cx, OX + robotCell[0]*CELL+CELL/2, OY + robotCell[1]*CELL+CELL/2, '#1976d2', 7);
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 12);
+}
+
+function draw() {
+  if (!state.paused) {
+    t++;
+    if (t % 5 === 0) {
+      if (!stuckA) stepA++;
+      if (path && stepB < path.length - 1) stepB++;
+    }
+    const ga = greedyPos(stepA);
+    met.update([stepA, stepB, path ? path.length : '—', stuckA ? 'YES' : 'no']);
+    drawSide(ctxA, canvasA, greedyPos(stepA), null, stuckA ? 'STUCK at wall!' : 'Greedy step ' + stepA);
+    drawSide(ctxB, canvasB, path ? path[stepB] : null, path, 'Planned step ' + stepB);
+  } else {
+    drawSide(ctxA, canvasA, greedyPos(stepA), null, stuckA ? 'STUCK at wall!' : 'Greedy step ' + stepA);
+    drawSide(ctxB, canvasB, path ? path[stepB] : null, path, 'Planned step ' + stepB);
+  }
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

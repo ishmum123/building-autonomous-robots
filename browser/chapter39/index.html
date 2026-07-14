@@ -6,42 +6,101 @@
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
-  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
 <h1>Chapter 39: Why Following Isn't Understanding</h1>
-<p class="key">Following trajectories does not generalize to new situations.</p>
-<canvas id="sim" width="600" height="300"></canvas>
+<p class="key">A path follower fails when the environment shifts. A goal-directed robot adapts.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
 <script>
-const canvas = document.getElementById('sim');
-const ctx = canvas.getContext('2d');
+const W = 280, H = 220, GOAL_X = 250, TRACK_Y = 130;
+let slopeForce = 2.0, perturbTime = 100;
+let rA, rB, pidB, t;
 
-const robot = new Body('robot', 50, 240, { mass: 1, radius: 10, color: '#1976d2' });
-const trainingPath = Array.from({length: 300}, (_, i) => 50 + i * 1.5);
-let i = 0;
+function initState() {
+  t = 0;
+  rA = new Body('follower', 20, TRACK_Y, { mass: 1, radius: 8, color: '#e53935' });
+  rB = new Body('goal', 20, TRACK_Y, { mass: 1, radius: 8, color: '#1976d2' });
+  pidB = new PID(6, 0.05, 0.8, TRACK_Y);
+}
+initState();
+
+// pre-recorded training path (x positions only, y is fixed)
+const TRAIN_PATH = Array.from({ length: 300 }, (_, i) => 20 + i * 0.9);
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Slope force', 0, 6, 0.5, slopeForce, v => { slopeForce = v; });
+UI.slider(cp, 'Perturb at frame', 40, 200, 10, perturbTime, v => { perturbTime = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Path follower (fails)', 'Goal-directed (adapts)', W, H);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 100, window: 300,
+  colors: ['#e53935', '#1976d2'],
+  labels: ['follower Y err', 'goal-dir Y err'],
+  title: 'Vertical error from track (slope applied after perturb frame)'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Frame', 'Follower Y', 'Goal-dir Y', 'Slope active?']);
+
+function drawRobot(cx, cv, body, label, trackY) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  // track
+  cx.strokeStyle = '#4caf50'; cx.lineWidth = 1; cx.setLineDash([5, 5]);
+  cx.beginPath(); cx.moveTo(0, trackY); cx.lineTo(cv.width, trackY); cx.stroke();
+  cx.setLineDash([]);
+  // goal
+  drawPoint(cx, GOAL_X, trackY, '#ff9800', 7);
+  // robot
+  drawBody(cx, body, { radius: 8 });
+  cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 14);
+  cx.fillText('Y err=' + (body.pos.y - trackY).toFixed(1), 4, 27);
+}
+
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  if (i < trainingPath.length) {
-    const target = trainingPath[i];
-    robot.clearForces();
-    robot.addForce(new Vec(5 * (target - robot.pos.x), 0));
-    robot.addForce(new Vec(-2, 0)); // unexpected slope not in training
-    robot.step(0.016);
-    i++;
+  if (!state.paused) {
+    t++;
+    const perturbing = t >= perturbTime;
+    const slopeY = perturbing ? slopeForce : 0;
+
+    // Path follower: replay x, can't compensate y
+    const pathIdx = Math.min(t, TRAIN_PATH.length - 1);
+    rA.pos.x = TRAIN_PATH[pathIdx];
+    rA.clearForces();
+    rA.addForce(new Vec(0, slopeY));  // slope pushes it down; no y correction
+    rA.step(0.016);
+    rA.pos.x = TRAIN_PATH[pathIdx]; // lock x to path
+    rA.pos.x = Math.min(GOAL_X, rA.pos.x);
+
+    // Goal-directed: PID on both x and y
+    rB.clearForces();
+    rB.addForce(new Vec(0, slopeY));
+    const yCorr = -pidB.update(rB.pos.y, 0.016);
+    rB.addForce(new Vec(3.5, yCorr));
+    rB.step(0.016);
+    rB.pos.x = Math.min(GOAL_X + 5, rB.pos.x);
+
+    plot.push(0, rA.pos.y - TRACK_Y);
+    plot.push(1, rB.pos.y - TRACK_Y);
+    met.update([t, rA.pos.y.toFixed(1), rB.pos.y.toFixed(1), perturbing ? 'YES' : 'no']);
   }
-  drawBody(ctx, robot);
-  ctx.strokeStyle = '#4caf50'; ctx.setLineDash([5, 5]);
-  ctx.beginPath(); ctx.moveTo(50, 240); ctx.lineTo(500, 240); ctx.stroke(); ctx.setLineDash([]);
-  ctx.fillStyle = '#333';
-  ctx.fillText(`Following a memorized path fails when the environment changes`, 10, 20);
+  drawRobot(ctxA, canvasA, rA, t >= perturbTime ? 'DRIFTING off track' : 'Following path', TRACK_Y);
+  drawRobot(ctxB, canvasB, rB, 'Goal-directed (PID)', TRACK_Y);
   requestAnimationFrame(draw);
 }
 draw();
-
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>
 </body>

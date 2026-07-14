@@ -14,7 +14,7 @@ Every discovery ends with something that moves.
 
 ## Start
 
-- Read: [Discovery 01 — Why Wheels Move](01-why-wheels-move.md)
+- Read: [Why Wheels Move](01-why-wheels-move.md)
 
 ## Roadmap
 

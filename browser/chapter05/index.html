@@ -6,45 +6,90 @@
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
+  .key { color: #555; max-width: 640px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
 <h1>Chapter 05: Why Copper Becomes a Magnet</h1>
-<p class="key">Electric current creates a magnetic field.</p>
-<canvas id="sim" width="600" height="300"></canvas>
+<p class="key">Electric current through a coil creates a magnetic field — strength scales with current and turns.</p>
+<div id="controls"></div>
+<canvas id="sim" width="600" height="230"></canvas>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
 <script>
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
 
-const coil = new Body('coil', 150, 150, { mass: 1, radius: 22, color: '#ff9800' });
-const nail = new Body('nail', 500, 150, { mass: 0.3, radius: 7, color: '#607d8b' });
-let t = 0;
+let currentLevel = 2, turns = 100;
+let coil, nail;
+
+function initState() {
+  coil = new Body('coil', 150, 115, { mass: 999, radius: 22, color: '#ff9800' });
+  nail = new Body('nail', 500, 115, { mass: 0.3, radius: 7, color: '#607d8b' });
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Current', 0, 5, 0.1, currentLevel, v => { currentLevel = v; });
+UI.slider(cp, 'Turns', 10, 300, 10, turns, v => { turns = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 600, height: 100, window: 300,
+  colors: ['#607d8b', '#ff9800'], labels: ['nail distance', 'I × N'],
+  title: 'Nail distance & Coil field strength (I × N)'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Distance', 'I×N', 'Nail speed']);
+
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const current = t > 120 ? 2 : 0;
-  if (current > 0) {
-    const delta = coil.pos.sub(nail.pos);
-    const dist = Math.max(delta.length(), 20);
-    const force = delta.div(dist).mul(20000 / (dist * dist));
-    nail.clearForces();
-    nail.addForce(force);
-  } else {
-    nail.clearForces();
+  if (!state.paused) {
+    const fieldStrength = currentLevel * turns;
+    if (currentLevel > 0) {
+      const delta = coil.pos.sub(nail.pos);
+      const dist = Math.max(delta.length(), 20);
+      const force = delta.div(dist).mul(fieldStrength * 20 / (dist * dist) * 500);
+      nail.clearForces();
+      nail.addForce(force);
+    } else {
+      nail.clearForces();
+    }
+    nail.step(0.016);
+    if (nail.pos.x < coil.pos.x + coil.radius + nail.radius) {
+      nail.pos.x = coil.pos.x + coil.radius + nail.radius;
+      nail.vel.x = Math.abs(nail.vel.x) * 0.2;
+    }
+    if (nail.pos.x > canvas.width - 10) { nail.pos.x = canvas.width - 10; nail.vel.x *= -0.4; }
+
+    const dist = coil.pos.sub(nail.pos).length();
+    plot.push(0, dist);
+    plot.push(1, fieldStrength);
+    met.update([dist, fieldStrength, nail.vel.x]);
   }
-  nail.step(0.016);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const alpha = Math.min(currentLevel / 5, 1);
+  ctx.strokeStyle = 'rgba(255,152,0,' + (alpha * 0.5) + ')';
+  ctx.lineWidth = 1;
+  for (let r = 30; r <= 160; r += 30) {
+    ctx.beginPath(); ctx.arc(coil.pos.x, coil.pos.y, r, 0, Math.PI * 2); ctx.stroke();
+  }
   drawBody(ctx, coil);
   drawBody(ctx, nail);
-  ctx.fillStyle = '#333';
-  ctx.fillText(current ? 'Current ON: coil becomes a magnet' : 'Current OFF: nail sits still', 10, 20);
-  t++;
+  ctx.fillStyle = '#333'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Coil (electromagnet)', coil.pos.x, coil.pos.y - 36);
+  ctx.fillStyle = currentLevel > 0 ? '#e65100' : '#aaa';
+  ctx.fillText(currentLevel > 0 ? 'Field ON' : 'Field OFF (I=0)', coil.pos.x, coil.pos.y - 22);
+
   requestAnimationFrame(draw);
 }
 draw();
-
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>
 </body>

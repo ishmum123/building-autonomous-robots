@@ -6,40 +6,128 @@
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
-  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
 <h1>Chapter 30: Why Autopilots Exist</h1>
-<p class="key">An autopilot handles fast stabilization so the human commands intent.</p>
-<canvas id="sim" width="600" height="300"></canvas>
+<p class="key">A human can only update a command a few times per second. The fast inner autopilot stabilizes at ~100 Hz; the human sets coarse intent. Without autopilot even small gusts cause flipping.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
 <script>
-const canvas = document.getElementById('sim');
-const ctx = canvas.getContext('2d');
+let humanRate = 10, kpAtt = 4.0, gustStrength = 15;
+let t = 0;
 
-const quad = new Quadcopter(1.0);
-quad.body.pos = new Vec(300, 150);
-const targetPitch = 0.2;
-const pid = new PID(3.0, 0, 0.8, targetPitch);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Human only (no autopilot)', 'Autopilot + human intent', 280, 220);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let qA, qB, autoPid, altA, altB;
+function initState() {
+  t = 0;
+  qA = new Quadcopter(1.0);
+  qA.body.pos = new Vec(140, 110); qA.body.angle = 0;
+  qB = new Quadcopter(1.0);
+  qB.body.pos = new Vec(140, 110); qB.body.angle = 0;
+  autoPid = new PID(kpAtt, 0, 0.6, 0);
+  altA = new PID(3.0, 0.1, 0.6, 110);
+  altB = new PID(3.0, 0.1, 0.6, 110);
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Human update rate (frames)', 5, 60, 5, humanRate, v => { humanRate = v; });
+UI.slider(cp, 'Autopilot Kp', 1, 8, 0.5, kpAtt, v => { kpAtt = v; autoPid.kp = v; });
+UI.slider(cp, 'Gust strength', 0, 40, 5, gustStrength, v => { gustStrength = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 120, window: 400,
+  colors: ['#ff9800', '#1976d2'],
+  labels: ['human-only tilt°', 'autopilot tilt°'],
+  title: 'Attitude stability: human-only vs autopilot'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Gust on?', 'Human tilt°', 'Auto tilt°', 'Gust frame']);
+
+const G = 9.81;
+const GUST_START = 100, GUST_END = 200;
+let humanCmdA = 9.5, humanCmdB = 9.5;
+
+function getGust(t) { return (t >= GUST_START && t <= GUST_END) ? gustStrength : 0; }
+
+function drawQuad(c, cx, q, label, gust) {
+  cx.clearRect(0, 0, c.width, c.height);
+  cx.strokeStyle = '#4caf5055'; cx.setLineDash([4, 4]);
+  cx.beginPath(); cx.moveTo(0, 110); cx.lineTo(c.width, 110); cx.stroke();
+  cx.setLineDash([]);
+  if (gust > 0) {
+    drawArrow(cx, { x: 10, y: 110 }, { x: 10 + gust * 1.5, y: 110 }, '#e53935');
+  }
+  const bx = Math.max(15, Math.min(265, q.body.pos.x));
+  const by = Math.max(15, Math.min(205, q.body.pos.y));
+  cx.save();
+  cx.translate(bx, by);
+  cx.rotate(q.body.angle);
+  cx.fillStyle = q.body.color;
+  cx.fillRect(-22, -5, 44, 10);
+  cx.restore();
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 16);
+  cx.fillText('tilt=' + (q.body.angle * 180 / Math.PI).toFixed(1) + '°', 4, 30);
+}
+
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const torque = pid.update(quad.body.angle, 0.016);
-  quad.setMotors(8 - torque, 8 + torque);
-  quad.step(0.016);
-  drawBody(ctx, quad.body);
-  ctx.strokeStyle = '#4caf50'; ctx.setLineDash([5, 5]);
-  const x2 = quad.body.pos.x + 60 * Math.cos(targetPitch);
-  const y2 = quad.body.pos.y + 60 * Math.sin(targetPitch);
-  ctx.beginPath(); ctx.moveTo(quad.body.pos.x, quad.body.pos.y); ctx.lineTo(x2, y2); ctx.stroke(); ctx.setLineDash([]);
-  ctx.fillStyle = '#333';
-  ctx.fillText(`Autopilot holds target pitch ${targetPitch.toFixed(1)} (current ${quad.body.angle.toFixed(2)})`, 10, 20);
+  if (!state.paused) {
+    t++;
+    const gust = getGust(t);
+
+    // human only: updates control at humanRate frames; no attitude correction between updates
+    if (t % humanRate === 0) {
+      const altCmdA = -altA.update(qA.body.pos.y, humanRate * 0.016);
+      humanCmdA = altCmdA;
+    }
+    qA.body.clearForces();
+    qA.body.addForce(new Vec(gust, -qA.body.mass * G));
+    qA.setMotors(humanCmdA / 2, humanCmdA / 2);
+    qA.body.addForce(qA.body.vel.mul(-0.3));
+    qA.step(0.016);
+    qA.body.pos.x = Math.max(10, Math.min(270, qA.body.pos.x));
+    qA.body.pos.y = Math.max(10, Math.min(210, qA.body.pos.y));
+
+    // autopilot: inner loop runs every frame, outer intent updated at humanRate
+    if (t % humanRate === 0) {
+      const altCmdB = -altB.update(qB.body.pos.y, humanRate * 0.016);
+      humanCmdB = altCmdB;
+    }
+    const attCmd = autoPid.update(qB.body.angle, 0.016);
+    qB.body.clearForces();
+    qB.body.addForce(new Vec(gust, -qB.body.mass * G));
+    qB.setMotors(humanCmdB / 2 - attCmd, humanCmdB / 2 + attCmd);
+    qB.body.addForce(qB.body.vel.mul(-0.3));
+    qB.step(0.016);
+    qB.body.pos.x = Math.max(10, Math.min(270, qB.body.pos.x));
+    qB.body.pos.y = Math.max(10, Math.min(210, qB.body.pos.y));
+
+    plot.push(0, qA.body.angle * 180 / Math.PI);
+    plot.push(1, qB.body.angle * 180 / Math.PI);
+    met.update([gust > 0 ? 'YES' : 'no',
+      (qA.body.angle * 180 / Math.PI).toFixed(1),
+      (qB.body.angle * 180 / Math.PI).toFixed(1),
+      t >= GUST_START && t <= GUST_END ? (t - GUST_START) : '—']);
+  }
+  const g = getGust(t);
+  drawQuad(canvasA, ctxA, qA, 'Human only (rate=' + humanRate + 'fr)', g);
+  drawQuad(canvasB, ctxB, qB, 'Autopilot Kp=' + kpAtt.toFixed(1), g);
   requestAnimationFrame(draw);
 }
 draw();
-
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>
 </body>

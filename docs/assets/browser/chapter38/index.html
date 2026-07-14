@@ -1,1 +1,112 @@
-../../../../browser/chapter38/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 38: Why Robots Change Their Mind</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 38: Why Robots Change Their Mind</h1>
+<p class="key">A stubborn robot follows its original plan into a newly-blocked cell. A replanning robot detours around it.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+const CELL = 32, COLS = 10, ROWS = 10, OX = 8, OY = 8;
+const START = [0, 0], GOAL = [9, 9];
+let obstFrame = 120;
+let t, gridA, gridB, origPath, replanPath, stepA, stepB, blockedA;
+
+function initState() {
+  t = 0; stepA = 0; stepB = 0; blockedA = false;
+  gridA = new Grid(COLS, ROWS);
+  gridB = new Grid(COLS, ROWS);
+  origPath = astar(gridA, START, GOAL);
+  replanPath = origPath ? [...origPath] : null;
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Obstacle appears (frame)', 30, 250, 10, obstFrame, v => { obstFrame = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Stubborn (no replan)', 'Replanning robot', 336, 336);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 100, window: 300,
+  colors: ['#e53935', '#1976d2'],
+  labels: ['stubborn step', 'replan step'],
+  title: 'Progress toward goal (higher = further along)'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Frame', 'Stubborn pos', 'Replan pos', 'Replanned?']);
+
+let replanned = false;
+
+function drawSide(cx, cv, grid, path, step, label) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  drawGrid(cx, grid, { cell: CELL, ox: OX, oy: OY });
+  if (path) drawGridPath(cx, path, { cell: CELL, ox: OX, oy: OY });
+  drawPoint(cx, OX + START[0]*CELL+CELL/2, OY + START[1]*CELL+CELL/2, '#4caf50', 7);
+  drawPoint(cx, OX + GOAL[0]*CELL+CELL/2, OY + GOAL[1]*CELL+CELL/2, '#ff9800', 7);
+  if (path && step < path.length) {
+    const [px, py] = path[step];
+    drawPoint(cx, OX + px*CELL+CELL/2, OY + py*CELL+CELL/2, '#1976d2', 7);
+  }
+  cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 8);
+}
+
+function draw() {
+  if (!state.paused) {
+    t++;
+    // spawn obstacle at obstFrame
+    if (t === obstFrame) {
+      // block a cell near middle of path
+      const mid = origPath ? Math.floor(origPath.length * 0.55) : 5;
+      if (origPath && mid < origPath.length) {
+        const [ox, oy] = origPath[mid];
+        gridA.block(ox, oy);
+        gridB.block(ox, oy);
+        // stubborn: keeps old path; replan: recalculates
+        const curPos = replanPath && stepB < replanPath.length ? replanPath[stepB] : START;
+        replanPath = astar(gridB, curPos, GOAL);
+        stepB = 0;
+        replanned = true;
+      }
+    }
+
+    if (t % 6 === 0) {
+      // stubborn: keep going, detect collision
+      if (origPath && stepA < origPath.length - 1) {
+        const next = origPath[stepA + 1];
+        if (gridA.isBlocked(next[0], next[1])) { blockedA = true; }
+        else if (!blockedA) stepA++;
+      }
+      if (replanPath && stepB < replanPath.length - 1) stepB++;
+    }
+
+    plot.push(0, stepA);
+    plot.push(1, stepB);
+    met.update([t, stepA, stepB, replanned ? 'YES' : 'no']);
+  }
+  drawSide(ctxA, canvasA, gridA, origPath, stepA, blockedA ? 'STUCK at new obstacle' : 'Stubborn step ' + stepA);
+  drawSide(ctxB, canvasB, gridB, replanPath, stepB, replanned ? 'Replanned! step ' + stepB : 'Step ' + stepB);
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

@@ -1,1 +1,97 @@
-../../../../browser/chapter20/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 20: Why Accelerometers Lie</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 20: Why Accelerometers Lie</h1>
+<p class="key">An accelerometer measures specific force — motion acceleration PLUS gravity. At rest it reads 9.81 m/s² upward. The raw reading and the true kinematic acceleration are different.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+let extAccel = 0, noiseStd = 0.5;
+let t = 0;
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Raw sensor reading', 'True kinematic accel', 280, 200);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+const accel = new Accelerometer(noiseStd);
+let body;
+function initState() {
+  body = new Body('b', 140, 100, { mass: 1, radius: 18, color: '#1976d2' });
+  t = 0;
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'External accel', -5, 5, 0.5, extAccel, v => { extAccel = v; });
+UI.slider(cp, 'Noise std', 0, 2, 0.1, noiseStd, v => { noiseStd = v; accel.noiseStd = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 120, window: 300,
+  colors: ['#e53935', '#1976d2', '#4caf50'],
+  labels: ['raw sensor Y', 'true kin accel Y', 'gravity -9.81'],
+  title: 'Accelerometer reading vs true kinematic acceleration'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Raw sensor X', 'Raw sensor Y', 'True accel Y', 'Diff']);
+
+const G = 9.81;
+
+function drawAccel(c, cx, reading, trueA, label, color) {
+  cx.clearRect(0, 0, c.width, c.height);
+  const cx2 = c.width / 2, cy2 = c.height / 2;
+  // circle body
+  cx.fillStyle = '#1976d2'; cx.beginPath(); cx.arc(cx2, cy2, 20, 0, Math.PI * 2); cx.fill();
+  // arrow for displayed value
+  const scale = 8;
+  const ay = reading * scale;
+  drawArrow(cx, { x: cx2, y: cy2 }, { x: cx2, y: cy2 - ay }, color);
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 16);
+  cx.fillText(trueA.toFixed(2) + ' m/s²', 4, 30);
+}
+
+function draw() {
+  if (!state.paused) {
+    t++;
+    // body has an externally applied accel in Y
+    body.clearForces();
+    body.addForce(new Vec(0, body.mass * extAccel));  // kinematic force
+    body.step(0.016);
+
+    // raw accelerometer reading: includes gravity (y axis flipped: up is negative in screen)
+    const rawY = extAccel + G + gaussianRandom(noiseStd);
+    const rawX = gaussianRandom(noiseStd);
+    // true kinematic accel
+    const trueKinY = extAccel;
+
+    plot.push(0, rawY);
+    plot.push(1, trueKinY);
+    plot.push(2, G);
+    met.update([rawX, rawY, trueKinY, rawY - trueKinY]);
+
+    drawAccel(canvasA, ctxA, rawY, rawY, 'Raw sensor (includes gravity)', '#e53935');
+    drawAccel(canvasB, ctxB, trueKinY, trueKinY, 'True kinematic accel', '#1976d2');
+  }
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

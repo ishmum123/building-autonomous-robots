@@ -1,1 +1,110 @@
-../../../../browser/chapter12/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 12: Why Everything Oscillates</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 12: Why Everything Oscillates</h1>
+<p class="key">Energy trades between spring (storage) and mass (motion). Damping determines whether it oscillates, decays, or creeps.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+// Three modes in A/B: left=underdamped, right=overdamped. Slider chooses damping.
+const ANCHOR_X = 140;
+let k = 10, cUnder = 0.5, cOver = 8;
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Underdamped (oscillates)', 'Overdamped (creeps)', 285, 220);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let massU, massO;
+function initState() {
+  massU = new Body('U', ANCHOR_X + 80, 110, { mass: 1, radius: 12, color: '#1976d2' });
+  massO = new Body('O', ANCHOR_X + 80, 110, { mass: 1, radius: 12, color: '#e53935' });
+  massU.vel = new Vec(0, 0);
+  massO.vel = new Vec(0, 0);
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Spring k', 1, 30, 0.5, k, v => { k = v; });
+UI.slider(cp, 'Under-damp c', 0, 3, 0.1, cUnder, v => { cUnder = v; });
+UI.slider(cp, 'Over-damp c', 3, 20, 0.5, cOver, v => { cOver = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 120, window: 500,
+  colors: ['#1976d2', '#e53935'], labels: ['underdamped displacement', 'overdamped displacement'],
+  title: 'Displacement vs time — underdamped vs overdamped'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Under disp', 'Over disp', 'Under vel', 'Over vel']);
+
+function stepMass(mass, c) {
+  const disp = mass.pos.x - ANCHOR_X;
+  const spring = -k * disp;
+  const damp = -c * mass.vel.x;
+  mass.clearForces();
+  mass.addForce(new Vec(spring + damp, 0));
+  mass.step(0.016);
+}
+
+function drawSpringMass(c_ctx, cw, ch, mass, c, color, label) {
+  c_ctx.clearRect(0, 0, cw, ch);
+  // spring (zigzag)
+  const ax = 10, ay = ch / 2 - 10;
+  const mx = mass.pos.x, my = ch / 2 - 10;
+  const segs = 12;
+  c_ctx.strokeStyle = '#aaa'; c_ctx.lineWidth = 1.5;
+  c_ctx.beginPath(); c_ctx.moveTo(ax, ay);
+  for (let i = 0; i <= segs; i++) {
+    const px = ax + (mx - ax) * i / segs;
+    const py = ay + (i % 2 === 0 ? 0 : (i % 4 === 1 ? -10 : 10));
+    c_ctx.lineTo(px, py);
+  }
+  c_ctx.lineTo(mx, my);
+  c_ctx.stroke();
+  // wall
+  c_ctx.fillStyle = '#795548'; c_ctx.fillRect(0, ay - 20, 8, 40);
+  // anchor dot
+  drawPoint(c_ctx, ANCHOR_X, ch / 2 - 10, '#555', 3);
+  // equilibrium line
+  c_ctx.strokeStyle = '#ddd'; c_ctx.setLineDash([4, 4]);
+  c_ctx.beginPath(); c_ctx.moveTo(ANCHOR_X, 0); c_ctx.lineTo(ANCHOR_X, ch); c_ctx.stroke();
+  c_ctx.setLineDash([]);
+
+  c_ctx.fillStyle = color; c_ctx.beginPath(); c_ctx.arc(mx, my, 12, 0, Math.PI * 2); c_ctx.fill();
+  c_ctx.fillStyle = '#333'; c_ctx.font = '11px sans-serif'; c_ctx.textAlign = 'left';
+  c_ctx.fillText(label + ' c=' + c.toFixed(1), 4, 16);
+  c_ctx.fillText('disp=' + (mass.pos.x - ANCHOR_X).toFixed(1), 4, 30);
+}
+
+function draw() {
+  if (!state.paused) {
+    stepMass(massU, cUnder);
+    stepMass(massO, cOver);
+    plot.push(0, massU.pos.x - ANCHOR_X);
+    plot.push(1, massO.pos.x - ANCHOR_X);
+    met.update([massU.pos.x - ANCHOR_X, massO.pos.x - ANCHOR_X, massU.vel.x, massO.vel.x]);
+  }
+  drawSpringMass(ctxA, canvasA.width, canvasA.height, massU, cUnder, '#1976d2', 'Under');
+  drawSpringMass(ctxB, canvasB.width, canvasB.height, massO, cOver, '#e53935', 'Over');
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

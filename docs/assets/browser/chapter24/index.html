@@ -1,1 +1,107 @@
-../../../../browser/chapter24/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 24: Why Sensor Fusion Works</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 24: Why Sensor Fusion Works</h1>
+<p class="key">A fast noisy IMU and a slow accurate GPS each cover the other's weakness. Fusing them with a weighted blend beats either alone.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+let imuNoise = 5, gpsNoise = 2, fusionW = 0.7;
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Single sensor (IMU only)', 'Fused (IMU + GPS)', 280, 200);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let truePos, imuEst, fusedEst, velTrue;
+function initState() {
+  truePos = 50; imuEst = 50; fusedEst = 50; velTrue = 1.0;
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'IMU noise', 0.5, 15, 0.5, imuNoise, v => { imuNoise = v; });
+UI.slider(cp, 'GPS noise', 0.5, 8, 0.5, gpsNoise, v => { gpsNoise = v; });
+UI.slider(cp, 'Fusion weight (GPS)', 0.1, 0.9, 0.05, fusionW, v => { fusionW = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 120, window: 400,
+  colors: ['#e53935', '#ff9800', '#1976d2', '#4caf50'],
+  labels: ['IMU err', 'GPS err', 'fused err', 'zero'],
+  title: '|Error| vs time: IMU-only vs fused'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['True pos', 'IMU err', 'GPS reading', 'Fused err']);
+
+let frame = 0;
+const GPS_RATE = 30;
+
+function drawEstimate(c, cx, est, label, color) {
+  cx.clearRect(0, 0, c.width, c.height);
+  // track bar
+  cx.fillStyle = '#e8e8e8'; cx.fillRect(0, 80, c.width, 30);
+  // truth
+  drawPoint(cx, truePos % c.width, 95, '#4caf50', 8);
+  // estimate
+  drawPoint(cx, est % c.width, 95, color, 6);
+  // error bar
+  const errPx = (est - truePos);
+  cx.fillStyle = Math.abs(errPx) < 3 ? '#4caf50' : '#e53935';
+  const x0 = truePos % c.width;
+  cx.fillRect(x0, 90, Math.min(Math.max(errPx, -c.width), c.width), 4);
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 18);
+  cx.fillText('err=' + (est - truePos).toFixed(1) + 'px', 4, 32);
+}
+
+function draw() {
+  if (!state.paused) {
+    frame++;
+    // true position moves
+    truePos += velTrue * 0.5;
+    if (truePos > 600) { truePos = 50; imuEst = 50; fusedEst = 50; }
+
+    // IMU estimate: integrate with noise
+    imuEst += velTrue * 0.5 + gaussianRandom(imuNoise) * 0.1;
+
+    // GPS: slow, accurate
+    let gpsMeas = null;
+    if (frame % GPS_RATE === 0) gpsMeas = addNoise(truePos, gpsNoise);
+
+    // Fused: use GPS when available, else dead-reckon
+    fusedEst += velTrue * 0.5 + gaussianRandom(imuNoise * 0.3) * 0.1;
+    if (gpsMeas !== null) {
+      fusedEst = fusedEst * (1 - fusionW) + gpsMeas * fusionW;
+    }
+
+    const gpsDisp = gpsMeas !== null ? gpsMeas : NaN;
+    plot.push(0, Math.abs(imuEst - truePos));
+    plot.push(1, gpsMeas !== null ? Math.abs(gpsMeas - truePos) : undefined);
+    plot.push(2, Math.abs(fusedEst - truePos));
+    plot.push(3, 0);
+    met.update([truePos, imuEst - truePos, isNaN(gpsDisp) ? '—' : gpsDisp.toFixed(1), fusedEst - truePos]);
+  }
+  drawEstimate(canvasA, ctxA, imuEst, 'IMU only (noise=' + imuNoise + ')', '#e53935');
+  drawEstimate(canvasB, ctxB, fusedEst, 'Fused (GPS w=' + fusionW.toFixed(2) + ')', '#1976d2');
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

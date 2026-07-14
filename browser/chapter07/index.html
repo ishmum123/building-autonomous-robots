@@ -6,38 +6,83 @@
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
+  .key { color: #555; max-width: 640px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
 <h1>Chapter 07: Why Motors Stop</h1>
-<p class="key">Friction and back-electromotive force oppose rotation.</p>
-<canvas id="sim" width="600" height="300"></canvas>
+<p class="key">Back-EMF opposes current as speed rises — motor saturates at a natural limit set by voltage and resistance.</p>
+<div id="controls"></div>
+<canvas id="sim" width="600" height="220"></canvas>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
 <script>
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
 
-const motor = new Body('motor', 300, 150, { mass: 0.5, radius: 25, color: '#1976d2' });
-let speed = 0;
+let voltage = 5, friction = 0.02;
+let speed, angle;
+
+function initState() { speed = 0; angle = 0; }
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Voltage (V)', 0, 12, 0.5, voltage, v => { voltage = v; });
+UI.slider(cp, 'Friction', 0, 0.1, 0.005, friction, v => { friction = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 600, height: 110, window: 400,
+  colors: ['#1976d2', '#e53935', '#4caf50'],
+  labels: ['speed', 'back-EMF', 'current'],
+  title: 'Speed, Back-EMF & Current over time'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Speed (rad/s)', 'Back-EMF', 'Current', 'Torque']);
+
 function draw() {
+  if (!state.paused) {
+    const backEmf = 0.8 * speed;
+    const current = (voltage - backEmf) / 1.0;
+    const torque = 0.1 * current;
+    speed += (torque - friction * speed) * 0.016;
+    if (speed < 0) speed = 0;
+    angle += speed * 0.016;
+
+    plot.push(0, speed);
+    plot.push(1, backEmf);
+    plot.push(2, Math.max(current, 0));
+    met.update([speed, backEmf, Math.max(current, 0), torque]);
+  }
+
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const voltage = 5;
-  const backEmf = 0.8 * speed;
-  const current = voltage - backEmf;
-  const torque = 0.1 * current;
-  const friction = -0.02 * speed;
-  speed += (torque + friction) * 0.016;
-  motor.angle += speed * 0.016;
-  drawBody(ctx, motor);
-  ctx.fillStyle = '#333';
-  ctx.fillText(`Speed: ${speed.toFixed(2)} rad/s (saturates due to back-EMF + friction)`, 10, 20);
+  const cx = 300, cy = 110, R = 50;
+  ctx.fillStyle = '#1976d2';
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + (R - 4) * Math.cos(angle), cy + (R - 4) * Math.sin(angle));
+  ctx.stroke();
+  // speed bar
+  const maxSpeed = voltage / (0.8 + friction);
+  const barW = Math.min((speed / maxSpeed) * 300, 300);
+  ctx.fillStyle = '#e3f2fd'; ctx.fillRect(150, 185, 300, 16);
+  ctx.fillStyle = '#1976d2'; ctx.fillRect(150, 185, barW, 16);
+  ctx.fillStyle = '#333'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Speed', 300, 214);
+  ctx.textAlign = 'left';
+  ctx.fillText('V=' + voltage.toFixed(1) + 'V  back-EMF saturates motor at ~' + (voltage / 0.8).toFixed(1) + ' rad/s', 8, 20);
+
   requestAnimationFrame(draw);
 }
 draw();
-
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>
 </body>

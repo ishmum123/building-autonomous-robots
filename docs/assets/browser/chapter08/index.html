@@ -1,1 +1,135 @@
-../../../../browser/chapter08/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 08: Why Brushes Had to Disappear</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 680px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 08: Why Brushes Had to Disappear</h1>
+<p class="key">Mechanical brushes wear and spark. Electronic commutation uses sector-based switching — zero moving contacts.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+let torqueStrength = 5;
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Brushed (wear accumulates)', 'Brushless (electronic)', 285, 240);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let angleA, angVelA, wearA;
+let rotorB;
+function initState() {
+  angleA = 0; angVelA = 0; wearA = 0;
+  rotorB = new Body('rotor', 142, 120, { mass: 0.5, radius: 25, color: '#1976d2' });
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Torque', 1, 15, 0.5, torqueStrength, v => { torqueStrength = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 100, window: 400,
+  colors: ['#795548', '#1976d2'], labels: ['brushed speed', 'brushless speed'],
+  title: 'Speed comparison: brushed vs brushless'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Brushed speed', 'Brushless speed', 'Brush wear']);
+
+function drawBrushed(c_ctx, cw, ch) {
+  c_ctx.clearRect(0, 0, cw, ch);
+  const cx = cw / 2, cy = ch / 2 - 10, R = 45;
+  // commutator ring (worn look)
+  const wearColor = 'rgb(' + Math.min(120 + wearA * 2, 200) + ',80,40)';
+  ctx_stroke(c_ctx, '#bbb', 3, () => c_ctx.arc(cx, cy, R + 6, 0, Math.PI * 2));
+  c_ctx.fillStyle = '#795548'; c_ctx.beginPath(); c_ctx.arc(cx, cy, R, 0, Math.PI * 2); c_ctx.fill();
+  // brushes
+  c_ctx.fillStyle = wearColor;
+  c_ctx.fillRect(cx - R - 14, cy - 6, 14, 12);
+  c_ctx.fillRect(cx + R, cy - 6, 14, 12);
+  // sparks if worn
+  if (wearA > 30 && Math.random() < 0.3) {
+    c_ctx.fillStyle = '#fff176';
+    c_ctx.beginPath(); c_ctx.arc(cx - R - 2, cy + (Math.random() - 0.5) * 10, 3, 0, Math.PI * 2); c_ctx.fill();
+    c_ctx.beginPath(); c_ctx.arc(cx + R + 2, cy + (Math.random() - 0.5) * 10, 3, 0, Math.PI * 2); c_ctx.fill();
+  }
+  // rotor arm
+  c_ctx.strokeStyle = '#fff'; c_ctx.lineWidth = 3;
+  c_ctx.beginPath();
+  c_ctx.moveTo(cx, cy);
+  c_ctx.lineTo(cx + (R - 4) * Math.cos(angleA), cy + (R - 4) * Math.sin(angleA));
+  c_ctx.stroke();
+  c_ctx.fillStyle = '#333'; c_ctx.font = '11px sans-serif'; c_ctx.textAlign = 'left';
+  c_ctx.fillText('speed: ' + angVelA.toFixed(1), 4, 16);
+  c_ctx.fillText('wear: ' + Math.min(wearA, 100).toFixed(0) + '%', 4, 30);
+}
+
+function ctx_stroke(c_ctx, color, lw, fn) {
+  c_ctx.strokeStyle = color; c_ctx.lineWidth = lw;
+  c_ctx.beginPath(); fn(); c_ctx.stroke();
+}
+
+function drawBrushless(c_ctx, cw, ch) {
+  c_ctx.clearRect(0, 0, cw, ch);
+  const sector = Math.floor((rotorB.angle / (Math.PI / 3)) % 6);
+  const cx = cw / 2, cy = ch / 2 - 10, R = 45;
+  ctx_stroke(c_ctx, '#bbb', 3, () => c_ctx.arc(cx, cy, R + 6, 0, Math.PI * 2));
+  c_ctx.fillStyle = '#1976d2'; c_ctx.beginPath(); c_ctx.arc(cx, cy, R, 0, Math.PI * 2); c_ctx.fill();
+  // sector indicator
+  const sectorColors = ['#4caf50', '#e53935', '#4caf50', '#e53935', '#4caf50', '#e53935'];
+  c_ctx.strokeStyle = sectorColors[sector % 6]; c_ctx.lineWidth = 4;
+  c_ctx.beginPath(); c_ctx.arc(cx, cy, R + 6, 0, Math.PI * 2); c_ctx.stroke();
+  c_ctx.strokeStyle = '#fff'; c_ctx.lineWidth = 3;
+  c_ctx.beginPath();
+  c_ctx.moveTo(cx, cy);
+  c_ctx.lineTo(cx + (R - 4) * Math.cos(rotorB.angle), cy + (R - 4) * Math.sin(rotorB.angle));
+  c_ctx.stroke();
+  c_ctx.fillStyle = '#333'; c_ctx.font = '11px sans-serif'; c_ctx.textAlign = 'left';
+  c_ctx.fillText('speed: ' + rotorB.angularVel.toFixed(1), 4, 16);
+  c_ctx.fillText('sector: ' + sector, 4, 30);
+}
+
+function stepBrushed() {
+  const brushFriction = 0.02 + wearA * 0.001;
+  angVelA += (torqueStrength - brushFriction * angVelA * 10) * 0.016;
+  if (angVelA < 0) angVelA = 0;
+  angleA += angVelA * 0.016;
+  wearA += 0.05;
+}
+
+function stepBrushless() {
+  const sector = Math.floor((rotorB.angle / (Math.PI / 3)) % 6);
+  const torque = sector % 2 === 0 ? torqueStrength : -torqueStrength;
+  rotorB.clearForces();
+  rotorB.addTorque(torque);
+  rotorB.step(0.016);
+}
+
+function draw() {
+  if (!state.paused) {
+    stepBrushed();
+    stepBrushless();
+    plot.push(0, angVelA);
+    plot.push(1, rotorB.angularVel);
+    met.update([angVelA, rotorB.angularVel, Math.min(wearA, 100)]);
+  }
+  drawBrushed(ctxA, canvasA.width, canvasA.height);
+  drawBrushless(ctxB, canvasB.width, canvasB.height);
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

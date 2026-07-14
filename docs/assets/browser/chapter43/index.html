@@ -1,1 +1,92 @@
-../../../../browser/chapter43/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 43: Why Estimation Beats Measurement</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 43: Why Estimation Beats Measurement</h1>
+<p class="key">Raw measurement lurches. A Kalman estimator maintains uncertainty and is far smoother than either alone.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+let measNoise = 5.0, procNoise = 0.05;
+let truePos, kf, lastMeas, lastEst, t;
+
+function initState() {
+  t = 0; truePos = 30;
+  kf = new Kalman1D(procNoise, measNoise * measNoise);
+  kf.x = 30; lastMeas = 30; lastEst = 30;
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Meas noise R', 1, 20, 1, measNoise, v => { measNoise = v; kf.r = v * v; });
+UI.slider(cp, 'Process noise Q', 0.01, 0.5, 0.01, procNoise, v => { procNoise = v; kf.q = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Raw measurement', 'Kalman estimate', 280, 200);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 120, window: 400,
+  colors: ['#e53935', '#1976d2', '#4caf50'],
+  labels: ['raw meas', 'Kalman est', 'truth'],
+  title: 'Position: raw measurement vs Kalman estimate vs truth'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Truth', 'Raw meas', 'Kalman est', 'Raw err', 'Kalman err']);
+
+const VEL = 0.5;
+
+function drawTrack(cv, cx, val, color, label) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  cx.fillStyle = '#e8e8e8'; cx.fillRect(0, 80, cv.width, 40);
+  const tx = truePos % (cv.width - 10) + 5;
+  const px = val % (cv.width - 10) + 5;
+  drawPoint(cx, tx, 100, '#4caf50', 8);
+  drawPoint(cx, px, 100, color, 6);
+  const err = val - truePos;
+  cx.fillStyle = Math.abs(err) < 2 ? '#4caf50' : '#e53935';
+  cx.fillRect(Math.min(tx, px), 96, Math.abs(err), 4);
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 16);
+  cx.fillText('err=' + err.toFixed(2), 4, 30);
+}
+
+function draw() {
+  if (!state.paused) {
+    t++;
+    truePos += VEL;
+    if (truePos > 500) { truePos = 30; kf.x = 30; kf.p = 1; }
+    lastMeas = addNoise(truePos, measNoise);
+    kf.predict(1, VEL);
+    kf.update(lastMeas);
+    lastEst = kf.x;
+    plot.push(0, lastMeas);
+    plot.push(1, lastEst);
+    plot.push(2, truePos);
+    met.update([truePos.toFixed(1), lastMeas.toFixed(1), lastEst.toFixed(1),
+      Math.abs(lastMeas - truePos).toFixed(2), Math.abs(lastEst - truePos).toFixed(2)]);
+  }
+  drawTrack(canvasA, ctxA, lastMeas, '#e53935', 'Raw (noise=' + measNoise + ')');
+  drawTrack(canvasB, ctxB, lastEst, '#1976d2', 'Kalman estimate');
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

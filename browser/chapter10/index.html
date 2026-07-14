@@ -6,37 +6,93 @@
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
-  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .key { color: #555; max-width: 680px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
 <h1>Chapter 10: Why Motors Need Conductors</h1>
-<p class="key">Conductors shape where current flows and therefore where force is produced.</p>
-<canvas id="sim" width="600" height="300"></canvas>
+<p class="key">More conductor turns = more torque for the same current. Conductors concentrate force where it matters.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
 <script>
-const canvas = document.getElementById('sim');
-const ctx = canvas.getContext('2d');
+let voltage = 5, resistance = 1;
 
-const motor = new Body('motor', 300, 150, { mass: 0.5, radius: 25, color: '#1976d2' });
-let speed = 0;
-const resistance = 1, voltage = 5, turns = 50;
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Few turns (N=10)', 'Many turns (N=100)', 285, 240);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let angleA, speedA, angleB, speedB;
+const turnsA = 10, turnsB = 100;
+
+function initState() {
+  angleA = 0; speedA = 0;
+  angleB = 0; speedB = 0;
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Voltage (V)', 1, 12, 0.5, voltage, v => { voltage = v; });
+UI.slider(cp, 'Resistance (Ω)', 0.5, 5, 0.5, resistance, v => { resistance = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 100, window: 400,
+  colors: ['#ff9800', '#1976d2'], labels: ['few turns speed', 'many turns speed'],
+  title: 'Speed: few vs many conductor turns (same V, same R)'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Few-turn speed', 'Many-turn speed', 'Current']);
+
+function motorStep(turns, speed, angle) {
   const current = voltage / resistance;
   const torque = 0.02 * turns * current;
   const damping = -0.05 * speed;
   speed += (torque + damping) * 0.016;
-  motor.angle += speed * 0.016;
-  drawBody(ctx, motor);
-  ctx.fillStyle = '#333';
-  ctx.fillText(`Turns: ${turns}  Current: ${current.toFixed(1)}A  Speed: ${speed.toFixed(2)} rad/s`, 10, 20);
+  angle += speed * 0.016;
+  return { speed, angle };
+}
+
+function drawMotor(c_ctx, cw, ch, angle, speed, turns, color) {
+  c_ctx.clearRect(0, 0, cw, ch);
+  const cx = cw / 2, cy = ch / 2 - 10, R = 45;
+  c_ctx.fillStyle = color;
+  c_ctx.beginPath(); c_ctx.arc(cx, cy, R, 0, Math.PI * 2); c_ctx.fill();
+  // windings indicator (concentric rings)
+  c_ctx.strokeStyle = 'rgba(255,255,255,0.3)'; c_ctx.lineWidth = 1;
+  const rings = Math.round(turns / 10);
+  for (let r = 0; r < rings; r++) {
+    c_ctx.beginPath(); c_ctx.arc(cx, cy, R - 4 - r * 3, 0, Math.PI * 2); c_ctx.stroke();
+  }
+  c_ctx.strokeStyle = '#fff'; c_ctx.lineWidth = 3;
+  c_ctx.beginPath();
+  c_ctx.moveTo(cx, cy);
+  c_ctx.lineTo(cx + (R - 4) * Math.cos(angle), cy + (R - 4) * Math.sin(angle));
+  c_ctx.stroke();
+  c_ctx.fillStyle = '#333'; c_ctx.font = '11px sans-serif'; c_ctx.textAlign = 'left';
+  c_ctx.fillText('N=' + turns + '  speed=' + speed.toFixed(1), 4, 16);
+}
+
+function draw() {
+  if (!state.paused) {
+    const rA = motorStep(turnsA, speedA, angleA);
+    speedA = rA.speed; angleA = rA.angle;
+    const rB = motorStep(turnsB, speedB, angleB);
+    speedB = rB.speed; angleB = rB.angle;
+    plot.push(0, speedA);
+    plot.push(1, speedB);
+    met.update([speedA, speedB, voltage / resistance]);
+  }
+  drawMotor(ctxA, canvasA.width, canvasA.height, angleA, speedA, turnsA, '#ff9800');
+  drawMotor(ctxB, canvasB.width, canvasB.height, angleB, speedB, turnsB, '#1976d2');
   requestAnimationFrame(draw);
 }
 draw();
-
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>
 </body>

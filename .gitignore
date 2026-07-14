@@ -5,3 +5,4 @@ __pycache__/
 .DS_Store
 building-autonomous-robots.bundle
 robot-book-patches.zip
+.epub-tmp/

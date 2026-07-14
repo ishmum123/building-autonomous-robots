@@ -1,1 +1,111 @@
-../../../../browser/chapter17/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 17: Why One PID Isn't Enough</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 17: Why One PID Isn't Enough</h1>
+<p class="key">A single PID on position fights both axes at once and fails. Cascaded PIDs handle altitude and lateral separately at their own time scales.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+const TGT_X = 220, TGT_Y = 80;
+let kpAlt = 4.0, kpPos = 1.5;
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Single PID (fails)', 'Cascaded PIDs', 280, 220);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let droneA, droneB, pidSingle, pidAlt, pidLat;
+function initState() {
+  droneA = new Body('A', 30, 190, { mass: 1, radius: 12, color: '#ff9800' });
+  droneB = new Body('B', 30, 190, { mass: 1, radius: 12, color: '#1976d2' });
+  // single PID tries to minimize combined distance — naive
+  pidSingle = new PID(kpPos, 0.05, 0.5, TGT_X);
+  // separate altitude and lateral controllers
+  pidAlt = new PID(kpAlt, 0.15, 1.0, TGT_Y);
+  pidLat = new PID(kpPos, 0.05, 0.5, TGT_X);
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Alt Kp', 1, 8, 0.5, kpAlt, v => { kpAlt = v; pidAlt.kp = v; });
+UI.slider(cp, 'Lat Kp', 0.5, 4, 0.1, kpPos, v => { kpPos = v; pidLat.kp = v; pidSingle.kp = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 120, window: 400,
+  colors: ['#ff9800', '#1976d2'],
+  labels: ['single PID err', 'cascade err'],
+  title: 'Distance to target: single PID vs cascaded'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Single dist', 'Cascade dist', 'Alt err', 'Lat err']);
+
+const GRAV = 9.81;
+
+function stepDroneA(d) {
+  d.clearForces();
+  const u = pidSingle.update(d.pos.x, 0.016);
+  d.addForce(new Vec(u, -d.mass * GRAV + 9.81)); // constant thrust barely fights gravity
+  d.addForce(d.vel.mul(-2));
+  d.step(0.016);
+  d.pos.x = Math.max(0, Math.min(270, d.pos.x));
+  d.pos.y = Math.max(0, Math.min(210, d.pos.y));
+}
+
+function stepDroneB(d) {
+  d.clearForces();
+  const fY = -pidAlt.update(d.pos.y, 0.016);
+  const fX = pidLat.update(d.pos.x, 0.016);
+  d.addForce(new Vec(fX, fY - d.mass * GRAV));
+  d.addForce(d.vel.mul(-2));
+  d.step(0.016);
+  d.pos.x = Math.max(0, Math.min(270, d.pos.x));
+  d.pos.y = Math.max(0, Math.min(210, d.pos.y));
+}
+
+function dist(d) { return Math.hypot(d.pos.x - TGT_X, d.pos.y - TGT_Y); }
+
+function drawDrone(c, cx, d, label) {
+  cx.clearRect(0, 0, c.width, c.height);
+  drawPoint(cx, TGT_X, TGT_Y, '#4caf50', 7);
+  cx.strokeStyle = '#4caf50'; cx.setLineDash([4, 4]);
+  cx.beginPath(); cx.moveTo(TGT_X, 0); cx.lineTo(TGT_X, c.height); cx.stroke();
+  cx.beginPath(); cx.moveTo(0, TGT_Y); cx.lineTo(c.width, TGT_Y); cx.stroke();
+  cx.setLineDash([]);
+  drawBody(cx, d);
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 16);
+  cx.fillText('dist=' + dist(d).toFixed(1), 4, 30);
+}
+
+function draw() {
+  if (!state.paused) {
+    stepDroneA(droneA);
+    stepDroneB(droneB);
+    plot.push(0, dist(droneA));
+    plot.push(1, dist(droneB));
+    met.update([dist(droneA), dist(droneB), droneB.pos.y - TGT_Y, droneB.pos.x - TGT_X]);
+  }
+  drawDrone(canvasA, ctxA, droneA, 'Single PID');
+  drawDrone(canvasB, ctxB, droneB, 'Cascaded (alt+lat)');
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

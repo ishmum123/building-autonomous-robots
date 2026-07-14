@@ -6,36 +6,116 @@
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
-  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
 <h1>Chapter 35: Why SLAM Exists</h1>
-<p class="key">SLAM solves mapping and localization jointly.</p>
-<canvas id="sim" width="600" height="300"></canvas>
+<p class="key">Localization-only fails if the map is wrong. SLAM refines both map and pose jointly.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
 <script>
-const canvas = document.getElementById('sim');
-const ctx = canvas.getContext('2d');
+// True landmark positions
+const TRUE_LM = [60, 140, 220];
+let sensorNoise = 4, motionNoise = 0.05;
+let trueX, locX, slamX, slamLM, t;
 
-const landmarks = [[2, 0], [5, 0], [8, 0]];
-let robotX = 1.0;
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#1976d2';
-  ctx.fillRect(robotX * 40 + 50, 150, 12, 12);
-  ctx.fillStyle = '#4caf50';
-  for (const lm of landmarks) {
-    ctx.beginPath(); ctx.arc(lm[0] * 40 + 50, 150, 6, 0, Math.PI * 2); ctx.fill();
+function initState() {
+  t = 0; trueX = 10; locX = 10; slamX = 10;
+  // localization uses a WRONG map (offsets by +15)
+  // SLAM builds its own map estimate
+  slamLM = TRUE_LM.map(l => l + 15); // start with same wrong guess
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Sensor noise', 1, 10, 1, sensorNoise, v => { sensorNoise = v; });
+UI.slider(cp, 'Motion noise', 0.01, 0.2, 0.01, motionNoise, v => { motionNoise = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Localization (wrong map)', 'SLAM (joint estimate)', 280, 220);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 110, window: 300,
+  colors: ['#e53935', '#1976d2'],
+  labels: ['loc error', 'SLAM error'],
+  title: 'Pose error (localization vs SLAM)'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['True X', 'Loc X', 'SLAM X', 'SLAM err']);
+
+const WRONG_LM = TRUE_LM.map(l => l + 15);
+
+function drawSide(cv, cx, robotX, lmPos, color, label) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  cx.fillStyle = '#eee'; cx.fillRect(0, 95, cv.width, 30);
+  // draw landmark estimates
+  for (const lx of lmPos) {
+    cx.fillStyle = '#ff9800';
+    const sx = Math.max(3, Math.min(cv.width-3, lx));
+    cx.fillRect(sx - 3, 90, 6, 40);
   }
-  ctx.fillStyle = '#333';
-  ctx.fillText(`Robot measures landmarks relative to itself; SLAM builds both map and pose`, 10, 20);
+  // true landmarks (faint)
+  for (const lx of TRUE_LM) {
+    cx.fillStyle = 'rgba(76,175,80,0.4)';
+    cx.fillRect(Math.max(3, Math.min(cv.width-3, lx)) - 2, 90, 4, 40);
+  }
+  drawPoint(cx, trueX % (cv.width-5) + 2, 110, '#4caf50', 7);
+  drawPoint(cx, Math.max(5, Math.min(cv.width-5, robotX)), 110, color, 5);
+  cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 15);
+  cx.fillText('err=' + (robotX - trueX).toFixed(1), 4, 28);
+  cx.fillStyle = '#999'; cx.fillText('orange=believed LM, green=true LM', 4, cv.height - 5);
+}
+
+function draw() {
+  if (!state.paused) {
+    t++;
+    const step = 1.0;
+    trueX += step;
+
+    // localization: noisy motion + correct to wrong map
+    locX += addNoise(step, motionNoise * step);
+    for (let i = 0; i < TRUE_LM.length; i++) {
+      const trueDist = TRUE_LM[i] - trueX;
+      if (Math.abs(trueDist) < 5) {
+        const meas = addNoise(trueDist, sensorNoise);
+        locX = WRONG_LM[i] - meas; // forced to wrong map
+      }
+    }
+
+    // SLAM: noisy motion + EKF-lite update of both pose and map
+    slamX += addNoise(step, motionNoise * step);
+    for (let i = 0; i < TRUE_LM.length; i++) {
+      const trueDist = TRUE_LM[i] - trueX;
+      if (Math.abs(trueDist) < 5) {
+        const meas = addNoise(trueDist, sensorNoise);
+        // split correction 50/50 between pose and map
+        const predDist = slamLM[i] - slamX;
+        const err = meas - predDist;
+        slamX -= err * 0.4;
+        slamLM[i] += err * 0.4;
+      }
+    }
+    if (trueX > 260) { trueX = 10; locX = 10; slamX = 10; slamLM = TRUE_LM.map(l => l + 15); }
+
+    plot.push(0, locX - trueX);
+    plot.push(1, slamX - trueX);
+    met.update([trueX.toFixed(1), locX.toFixed(1), slamX.toFixed(1), (slamX - trueX).toFixed(2)]);
+  }
+  drawSide(canvasA, ctxA, locX, WRONG_LM, '#e53935', 'Localization only');
+  drawSide(canvasB, ctxB, slamX, slamLM, '#1976d2', 'SLAM');
   requestAnimationFrame(draw);
 }
 draw();
-
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>
 </body>

@@ -1,1 +1,120 @@
-../../../../browser/chapter22/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 22: Why GPS Isn't Enough</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 22: Why GPS Isn't Enough</h1>
+<p class="key">GPS is low-rate and noisy. A dead-reckoning estimate (IMU integration) is fast but drifts. Side-by-side shows what control looks like using each alone.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+let gpsNoise = 8, gpsRate = 30, imuBias = 0.3;
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'GPS only (low rate)', 'Dead-reckoning (drifts)', 280, 200);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let drone, gps, lastFix, drEstX, gpsTrailA, gpsTrailB;
+function initState() {
+  drone = new Body('d', 30, 100, { mass: 1, radius: 10, color: '#1976d2' });
+  drone.vel = new Vec(1.8, 0.5);
+  gps = new GPS(gpsNoise, gpsRate);
+  lastFix = { x: 30, y: 100 };
+  drEstX = 30; drEstY = 100;
+  gpsTrailA = []; gpsTrailB = [];
+}
+initState();
+
+let drEstY = 100;
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'GPS noise', 1, 30, 1, gpsNoise, v => { gpsNoise = v; gps.noiseStd = v; });
+UI.slider(cp, 'GPS rate (frames)', 5, 60, 5, gpsRate, v => { gpsRate = v; gps.updateRate = v; });
+UI.slider(cp, 'IMU bias', 0, 1.5, 0.05, imuBias, v => { imuBias = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 110, window: 400,
+  colors: ['#1976d2', '#e53935', '#4caf50'],
+  labels: ['GPS est err', 'DR est err', 'zero'],
+  title: 'Position error: GPS vs dead-reckoning'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['True X', 'GPS err', 'DR err', 'GPS fixes']);
+
+let fixCount = 0;
+
+function drawScene(c, cx, trail, estX, estY, label) {
+  cx.clearRect(0, 0, c.width, c.height);
+  // true path
+  cx.strokeStyle = '#4caf50'; cx.lineWidth = 1; cx.setLineDash([3, 3]);
+  cx.beginPath();
+  if (trail.length > 1) {
+    cx.moveTo(trail[0].tx, trail[0].ty);
+    for (let i = 1; i < trail.length; i++) cx.lineTo(trail[i].tx, trail[i].ty);
+  }
+  cx.stroke(); cx.setLineDash([]);
+  // estimate
+  cx.strokeStyle = '#e53935'; cx.lineWidth = 1;
+  cx.beginPath();
+  if (trail.length > 1) {
+    cx.moveTo(trail[0].ex, trail[0].ey);
+    for (let i = 1; i < trail.length; i++) cx.lineTo(trail[i].ex, trail[i].ey);
+  }
+  cx.stroke();
+  // current truth dot
+  drawPoint(cx, drone.pos.x % c.width, drone.pos.y % c.height, '#4caf50', 6);
+  // estimate dot
+  drawPoint(cx, estX % c.width, estY % c.height, '#e53935', 5);
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 16);
+}
+
+function draw() {
+  if (!state.paused) {
+    drone.clearForces();
+    drone.step(0.016);
+    if (drone.pos.x > 280) { drone.pos.x = 30; drEstX = 30; drEstY = 100; gpsTrailA = []; gpsTrailB = []; }
+
+    const fix = gps.read(drone);
+    if (fix) { lastFix = fix; fixCount++; }
+
+    // GPS estimate: hold last fix
+    const gpsErrX = lastFix.x - drone.pos.x;
+
+    // dead-reckoning: integrate velocity + bias
+    drEstX += (drone.vel.x + imuBias) * 0.016;
+    drEstY += drone.vel.y * 0.016;
+    const drErr = drEstX - drone.pos.x;
+
+    gpsTrailA.push({ tx: drone.pos.x, ty: drone.pos.y, ex: lastFix.x, ey: lastFix.y });
+    gpsTrailB.push({ tx: drone.pos.x, ty: drone.pos.y, ex: drEstX, ey: drEstY });
+    if (gpsTrailA.length > 200) { gpsTrailA.shift(); gpsTrailB.shift(); }
+
+    plot.push(0, Math.abs(gpsErrX));
+    plot.push(1, Math.abs(drErr));
+    plot.push(2, 0);
+    met.update([drone.pos.x, gpsErrX, drErr, fixCount]);
+  }
+  drawScene(canvasA, ctxA, gpsTrailA, lastFix.x, lastFix.y, 'GPS only');
+  drawScene(canvasB, ctxB, gpsTrailB, drEstX, drEstY, 'Dead-reckoning (IMU bias=' + imuBias.toFixed(2) + ')');
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

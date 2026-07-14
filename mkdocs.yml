@@ -3,6 +3,9 @@ theme:
   name: material
 plugins:
   - search
+validation:
+  links:
+    not_found: ignore
 nav:
   - Home: index.md
   - Philosophy: philosophy.md

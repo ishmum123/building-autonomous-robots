@@ -6,37 +6,86 @@
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
-  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
 <h1>Chapter 16: Why PID Was Invented</h1>
-<p class="key">PID blends proportional, integral, and derivative responses.</p>
-<canvas id="sim" width="600" height="300"></canvas>
+<p class="key">P-only leaves steady-state offset. I eliminates it but can overshoot. D damps oscillation. Full PID combines all three.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
 <script>
-const canvas = document.getElementById('sim');
-const ctx = canvas.getContext('2d');
+const TARGET = 220;
+let kp = 2.0, ki = 0.3, kd = 0.8;
 
-const plant = new Body('plant', 50, 150, { mass: 1, radius: 12, color: '#1976d2' });
-const target = new Body('target', 500, 150, { mass: 1, radius: 6, color: '#4caf50' });
-const pid = new PID(1.0, 0.2, 0.5, target.pos.x);
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'P-only (offset remains)', 'Full PID (no offset)', 280, 200);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let plantP, plantPID, pidP, pidFull;
+function initState() {
+  plantP   = new Body('P',   30, 100, { mass: 1, radius: 12, color: '#ff9800' });
+  plantPID = new Body('PID', 30, 100, { mass: 1, radius: 12, color: '#1976d2' });
+  pidP    = new PID(kp, 0,  0,   TARGET);
+  pidFull = new PID(kp, ki, kd, TARGET);
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Kp', 0.5, 6, 0.1, kp, v => { kp = v; pidP.kp = v; pidFull.kp = v; });
+UI.slider(cp, 'Ki', 0, 1, 0.05, ki, v => { ki = v; pidFull.ki = v; });
+UI.slider(cp, 'Kd', 0, 3, 0.1, kd, v => { kd = v; pidFull.kd = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 120, window: 400,
+  colors: ['#ff9800', '#1976d2', '#4caf50'],
+  labels: ['P-only pos', 'PID pos', 'target'],
+  title: 'Position vs time: P-only vs full PID'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['P-only pos', 'P-only err', 'PID pos', 'PID err']);
+
+function stepPlant(plant, pid) {
   plant.clearForces();
-  const u = pid.update(plant.pos.x, 0.016);
-  plant.addForce(new Vec(u, 0));
+  plant.addForce(new Vec(pid.update(plant.pos.x, 0.016), 0));
+  plant.addForce(plant.vel.mul(-1.5));
   plant.step(0.016);
-  drawBody(ctx, target);
-  drawBody(ctx, plant);
-  ctx.fillStyle = '#333';
-  ctx.fillText(`PID blends P, I, and D (position ${plant.pos.x.toFixed(1)})`, 10, 20);
+  plant.pos.x = Math.max(0, Math.min(270, plant.pos.x));
+}
+
+function drawPlant(c, cx, plant, label) {
+  cx.clearRect(0, 0, c.width, c.height);
+  cx.strokeStyle = '#4caf50'; cx.setLineDash([4, 4]);
+  cx.beginPath(); cx.moveTo(TARGET, 0); cx.lineTo(TARGET, c.height); cx.stroke();
+  cx.setLineDash([]);
+  drawPoint(cx, TARGET, c.height / 2, '#4caf50', 5);
+  drawBody(cx, plant);
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 16);
+  cx.fillText('err=' + (plant.pos.x - TARGET).toFixed(1), 4, 30);
+}
+
+function draw() {
+  if (!state.paused) {
+    stepPlant(plantP, pidP);
+    stepPlant(plantPID, pidFull);
+    plot.push(0, plantP.pos.x);
+    plot.push(1, plantPID.pos.x);
+    plot.push(2, TARGET);
+    met.update([plantP.pos.x, plantP.pos.x - TARGET, plantPID.pos.x, plantPID.pos.x - TARGET]);
+  }
+  drawPlant(canvasA, ctxA, plantP,   'P-only  Kp=' + kp.toFixed(1));
+  drawPlant(canvasB, ctxB, plantPID, 'PID  Ki=' + ki.toFixed(2) + ' Kd=' + kd.toFixed(1));
   requestAnimationFrame(draw);
 }
 draw();
-
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>
 </body>

@@ -1,1 +1,95 @@
-../../../../browser/chapter34/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 34: Why Robots Get Lost</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 34: Why Robots Get Lost</h1>
+<p class="key">Blind odometry diverges from truth. Landmark corrections keep the estimate on track.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+let driftRate = 0.04, lmNoise = 2.0;
+let trueX, blindX, corrX, t;
+const LANDMARKS = [80, 180, 270];
+
+function initState() {
+  t = 0; trueX = 20; blindX = 20; corrX = 20;
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Odometry drift', 0.01, 0.15, 0.01, driftRate, v => { driftRate = v; });
+UI.slider(cp, 'Landmark noise', 0.5, 6, 0.5, lmNoise, v => { lmNoise = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Blind odometry (lost)', 'Landmark-corrected', 280, 200);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 110, window: 300,
+  colors: ['#e53935', '#1976d2'],
+  labels: ['blind error', 'corrected error'],
+  title: 'Localization error vs truth'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['True X', 'Blind X', 'Corr X', 'Blind err']);
+
+function drawSide(cv, cx, pos, color, label) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  cx.fillStyle = '#eee'; cx.fillRect(0, 85, cv.width, 30);
+  // landmarks
+  for (const lx of LANDMARKS) {
+    cx.fillStyle = '#ff9800';
+    cx.fillRect((lx % cv.width) - 3, 80, 6, 40);
+  }
+  drawPoint(cx, trueX % cv.width, 100, '#4caf50', 7);
+  drawPoint(cx, pos % cv.width, 100, color, 5);
+  cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 15);
+  cx.fillText('err=' + (pos - trueX).toFixed(1), 4, 28);
+}
+
+function draw() {
+  if (!state.paused) {
+    t++;
+    const step = 1.0;
+    trueX += step;
+    blindX += addNoise(step, driftRate * step);
+    corrX += addNoise(step, driftRate * step);
+
+    // correct when near a landmark
+    for (const lx of LANDMARKS) {
+      if (Math.abs(trueX - lx) < 2) {
+        const meas = addNoise(lx, lmNoise);
+        corrX = meas;
+      }
+    }
+    if (trueX > 400) { trueX = 20; blindX = 20; corrX = 20; }
+
+    plot.push(0, blindX - trueX);
+    plot.push(1, corrX - trueX);
+    met.update([trueX.toFixed(1), blindX.toFixed(1), corrX.toFixed(1), (blindX - trueX).toFixed(2)]);
+  }
+  drawSide(canvasA, ctxA, blindX, '#e53935', 'Blind odometry');
+  drawSide(canvasB, ctxB, corrX, '#1976d2', 'Landmark-corrected');
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

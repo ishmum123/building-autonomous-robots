@@ -6,38 +6,92 @@
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
-  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
 <h1>Chapter 31: Why Drones Crash</h1>
-<p class="key">Safety margins and fail-safe logic are as important as control.</p>
-<canvas id="sim" width="600" height="300"></canvas>
+<p class="key">Stable controller holds altitude; a single motor failure causes unrecoverable spin and crash.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
+<div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
 <script>
-const canvas = document.getElementById('sim');
-const ctx = canvas.getContext('2d');
+const GND = 260, HOME_Y = 130;
+let kp = 4.0, ki = 0.1, kd = 1.0, failTime = 200;
 
-const quad = new Quadcopter(1.0);
-quad.body.pos = new Vec(300, 100);
-const pid = new PID(4.0, 0.1, 1.0, 100);
-let t = 0;
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Stable hover', 'Motor failure → crash', 280, 270);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+let qA, qB, pidA, pidB, t;
+function initState() {
+  t = 0;
+  qA = new Quadcopter(1.0);
+  qA.body.pos = new Vec(140, HOME_Y);
+  pidA = new PID(kp, ki, kd, HOME_Y);
+
+  qB = new Quadcopter(1.0);
+  qB.body.pos = new Vec(140, HOME_Y);
+  pidB = new PID(kp, ki, kd, HOME_Y);
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Hover Kp', 1, 8, 0.5, kp, v => { kp = v; });
+UI.slider(cp, 'Fail at frame', 50, 400, 50, failTime, v => { failTime = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 110, window: 300,
+  colors: ['#1976d2', '#e53935'],
+  labels: ['stable Y', 'failing Y'],
+  title: 'Altitude over time (lower = falling)'
+});
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['Frame', 'Stable alt', 'Failing alt', 'Failure?']);
+
+const G = 9.81;
+function stepQuad(q, pid, failed) {
+  const thr = -pid.update(q.body.pos.y, 0.016);
+  const lm = failed ? 0 : thr;
+  q.setMotors(lm, thr);
+  q.body.addForce(new Vec(0, q.body.mass * G));
+  q.step(0.016);
+  q.body.pos.x = Math.max(10, Math.min(270, q.body.pos.x));
+  q.body.pos.y = Math.max(10, Math.min(GND, q.body.pos.y));
+}
+
+function drawQuad(cv, cx, q, label) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  cx.fillStyle = '#eee'; cx.fillRect(0, GND, cv.width, cv.height - GND);
+  cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 15);
+  cx.save(); cx.translate(q.body.pos.x, q.body.pos.y); cx.rotate(q.body.angle);
+  cx.fillStyle = q.body.color; cx.fillRect(-22, -5, 44, 10);
+  cx.restore();
+  drawPoint(cx, 140, HOME_Y, '#4caf50', 4);
+}
+
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const thrust = pid.update(quad.body.pos.y, 0.016);
-  if (t > 300) quad.setMotors(0, thrust); // motor failure
-  else quad.setMotors(thrust, thrust);
-  quad.step(0.016);
-  drawBody(ctx, quad.body);
-  ctx.fillStyle = '#333';
-  ctx.fillText(t > 300 ? `Motor failure: drone loses control` : `Normal hover`, 10, 20);
-  t++;
+  if (!state.paused) {
+    t++;
+    const failed = t >= failTime;
+    stepQuad(qA, pidA, false);
+    stepQuad(qB, pidB, failed);
+    plot.push(0, qA.body.pos.y);
+    plot.push(1, qB.body.pos.y);
+    met.update([t, qA.body.pos.y.toFixed(1), qB.body.pos.y.toFixed(1), failed ? 'YES' : 'no']);
+  }
+  drawQuad(canvasA, ctxA, qA, 'Stable hover');
+  drawQuad(canvasB, ctxB, qB, t >= failTime ? 'LEFT MOTOR DEAD' : 'Normal');
   requestAnimationFrame(draw);
 }
 draw();
-
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>
 </body>

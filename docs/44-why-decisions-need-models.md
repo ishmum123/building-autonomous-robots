@@ -2,38 +2,96 @@
 
 ## The Problem
 
-You can react to the present, but the best action depends on the future. How?
+A drone is on a delivery mission: fly to building B, drop package, return to depot. Battery is at 55%. The depot is 4 minutes away; the delivery takes 2 minutes; return is 4 minutes. Total needed: 6 minutes. At 55%, the drone has approximately 8 minutes remaining — plenty.
 
-## Thinking
+Midway to the delivery, the drone enters a headwind. Battery drain rate jumps from 5% per minute to 9% per minute. Now it has 55 - (3 minutes × 9%) = 28% remaining at delivery. Return takes 4 minutes at 7% drain in tailwind. Required: 28%. It barely makes it back on fumes — with 0% to spare if the wind estimate is wrong.
 
-Before we name anything, ask yourself:
+A reactive controller sees: battery = 55%, current goal = deliver package. It has no information about what will happen to the battery over the next 6 minutes. It makes the right decision for the current moment, which is the wrong decision for the 6-minute mission.
 
-- What would happen if the missing piece were absent?
-- What is the simplest system that could show this effect?
-- Can you draw the interaction before reading the answer?
+Good decisions require looking ahead:
 
-## Discovery
+- The consequence of any action unfolds over time — next second, next minute, next flight leg
+- Current sensor readings don't tell you future states; only a model does
+- The right action now may depend entirely on what's expected to happen later
+- Without a model, reactive control can be locally optimal and globally catastrophic
 
-A model lets the robot predict outcomes and choose the best sequence.
+## What Would You Try?
 
-## Simulation
+- Before deciding whether to continue the delivery, what information would you need about the future? Could you compute that information from current sensor readings and a physics model?
+- The wind model is uncertain — it might increase, decrease, or stay constant. How do you make a good decision when the future you're predicting is itself uncertain?
+- "Continue if you can make it back" sounds like a simple rule. But "can make it back" requires knowing the return wind, return altitude profile, and future battery behavior — all of which require a model. What is the simplest model that captures the essential risk?
 
-Run the chapter simulation in your browser:
+## Failed Attempts
 
-- Source: [`browser/chapter44/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter44/index.html)
-- Live demo: [assets/browser/chapter44/index.html](assets/browser/chapter44/index.html)
+### Attempt 1: Reactive threshold rules
 
-The demo is a self-contained HTML page with a tiny JavaScript physics engine. Open it directly or through the site link above.
+Program conservative fixed rules: "abort mission if battery below 40%." This ensures the drone always has margin.
 
-## Exercises
+Fixed thresholds fail both ways. 40% in a strong headwind may be insufficient (the scenario above: needed 28%, had 28%, zero margin). 40% in a tailwind with short return may be excessive (abort a feasible mission unnecessarily). The optimal threshold depends on context — wind, distance, altitude, drone load — all of which vary. A fixed threshold is the wrong abstraction: it's a policy pretending to be a decision, ignoring all the contextual information that makes the threshold either too conservative or insufficient.
 
-1. Change one parameter in the simulation and predict what will happen.
-2. Draw the system before and after the discovery.
-3. Name one real-world device that depends on this idea and one way it can fail.
+### Attempt 2: Greedy myopic optimization
 
-## Engineering Notes
+At each step, choose the action that produces the best immediate outcome (maximum progress toward goal, minimum energy per meter). Never look ahead.
 
-Real systems add noise, latency, and power limits. The model we built is the simplest version; real `model predictive control` designs trade accuracy, cost, and reliability.
+Greedy control is locally optimal. It fails when locally-optimal moves lead to bad global outcomes. Continuing delivery at maximum speed in a headwind minimizes time-to-delivery (greedy optimum) but maximizes battery drain rate, leaving less margin for return. The greedy controller never considers that the energy spent in the next 2 minutes determines whether it survives the 4 minutes after that. This is the standard failure of greedy algorithms: they optimize the first move without considering that the first move changes the options available for all subsequent moves.
+
+### Attempt 3: Use a lookup table of pre-computed policies
+
+Pre-compute the optimal action for every possible state (battery level, distance to goal, wind speed, distance to depot). Store in a table. At runtime, look up current state and execute.
+
+This is the **value function / policy table** approach from dynamic programming — and it's formally correct. It breaks on state space size. The state space for this drone problem has: battery (100 levels) × distance to goal (500 levels) × wind speed (50 levels) × distance to depot (500 levels) × wind direction (36 levels) = 450,000,000 entries. With 4-byte floats, the table requires 1.8 GB of memory and takes days to compute. For higher-dimensional state spaces (full 3D position, velocity, attitude, wind vector), precomputed tables are computationally infeasible.
+
+## The Discovery
+
+Fixed thresholds ignore context. Greedy control ignores consequences. Full lookup tables are computationally intractable. All three fail to answer the core question: *what will happen if I take this action?*
+
+The productive answer: use a **model** to simulate the consequences of candidate actions forward in time, evaluate the outcomes, and choose the action with the best predicted outcome. This is **Model Predictive Control (MPC)**: at each timestep, solve a finite-horizon optimization problem using a model of the dynamics.
+
+For the drone:
+1. **Model**: given current battery level B, speed v, wind w, predict B(t+Δt) = B - drain_rate(v, w) × Δt
+2. **Horizon**: simulate 8 minutes ahead (delivery + return)
+3. **Evaluate**: predict whether battery reaches zero before depot
+4. **Decide**: if predicted return battery < 15% (safety margin), abort now; else continue
+
+The model doesn't need to be perfect. A battery model accurate to ±20% is sufficient to distinguish "8 minutes of flight remaining" from "3 minutes remaining." Model accuracy must be commensurate with the decision quality required, not perfect.
+
+MPC recomputes this optimization every second with updated sensor readings. If wind drops, the model updates, the prediction improves, and the decision reflects current conditions. If wind increases, the model catches it early and triggers abort before the battery reaches a critical level.
+
+The formal name is **receding horizon control**: optimize over a fixed future window that "recedes" forward at each timestep, always planning over the same time horizon but with updated initial conditions.
+
+## Try It
+
+<iframe src="../assets/browser/chapter44/index.html" width="100%" height="460" style="border:1px solid var(--md-default-fg-color--lightest);border-radius:8px;"></iframe>
+
+[open in a new tab](../assets/browser/chapter44/index.html)
+
+Before changing anything, predict:
+
+- Fly with reactive control in a headwind that builds gradually. At what battery level does the reactive controller abort — and does the drone make it back safely?
+- Enable MPC. In the same headwind scenario, at what battery level and physical location does MPC trigger the abort? Is it earlier or later than reactive control?
+- Set wind prediction to very uncertain (wide error bars on wind model). Does MPC become more or less conservative? Does it ever fail to abort when it should?
+
+## Implementation
+
+`browser/chapter44/index.html` implements a simplified 1D MPC with a battery-dynamics model. At each timestep, the MPC solver runs 30 forward simulation steps (6 minutes × 0.2 s per step) with the current wind and battery state, checking whether the simulated drone can complete the mission and return. `browser/common/engine.js` implements the forward simulator separately from the main physics — this is the "model" in MPC. Watch the predicted return battery (shown in the UI) change dynamically as wind changes, and observe how MPC aborts at a higher battery level than the fixed-threshold controller when wind is strong.
+
+## When It Breaks
+
+**Model error causes overconfident decisions.** MPC trusts its model. If the battery model underestimates drain at low temperature (cold batteries have lower capacity), MPC predicts adequate return margin but the drone lands short. The solution is to include uncertainty in the model — robust MPC optimizes over the worst-case model realization within an uncertainty set, guaranteeing safety even when the model is wrong by a known amount. But robust MPC is more conservative and can become infeasible if the uncertainty set is too large.
+
+**Short prediction horizon misses slow-building problems.** If MPC's horizon is 2 minutes and the mission is 10 minutes, it can't predict that the tailwind on the outbound leg will be a headwind on the return. The model looks fine for the first 2 minutes, so MPC continues. This is why horizon length must be commensurate with the task timescale. In practice, MPC users must think carefully about what can go wrong beyond the prediction window — and handle it with separate constraints or safety margins that don't depend on the model.
+
+## Transfer
+
+- **Self-driving car trajectory prediction**: autonomous vehicles run a short-horizon MPC every 50 ms to predict the motion of surrounding vehicles over the next 3 seconds and choose a safe trajectory. The "model" is a constant-velocity prediction for other vehicles; control updates are fast enough to recover from model errors. Waymo and Cruise's trajectory planners are MPC variants.
+- **Chemical process control**: MPC was developed in the 1970s for chemical plant control (distillation columns, reactors) where process dynamics are slow, models are available from first principles, and the cost of suboptimal control is lost product or safety violations. Shell's IDCOM and DMC systems, deployed in refineries from 1974, are the earliest large-scale MPC deployments.
+- **Sports strategy under uncertainty**: a tennis player choosing whether to serve aggressively (higher ace rate, higher fault rate) or conservatively (lower fault rate, easier to return) is running a mental MPC: model the opponent's return probability under each strategy, predict outcomes over the set, choose strategy that maximizes expected games won. The "model" is their knowledge of the opponent.
+
+Exercises:
+
+1. A drone's battery is at 60%. Wind model predicts 8% per minute drain for 3 minutes to delivery, then 5% per minute for 4 minutes on return. Predict the battery level at delivery and at depot return. What is the safety margin?
+2. The wind model is uncertain: drain rate is 8% ± 2% per minute (uniform distribution). Compute the worst-case battery at return under the worst wind (10% drain rate throughout). Is the mission safe under worst-case?
+3. MPC runs at 1 Hz with a 2-minute horizon and each forward simulation takes 20 ms. How many forward simulations run per second? What fraction of compute budget does MPC consume, and what constraint does this place on the simulation complexity?
 
 ---
 

@@ -1,1 +1,123 @@
-../../../../browser/chapter37/index.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chapter 37: Why A* Works</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<h1>Chapter 37: Why A* Works</h1>
+<p class="key">BFS expands in all directions. A* uses a heuristic to aim toward the goal — far fewer expansions.</p>
+<div id="controls"></div>
+<div id="ab-wrap"></div>
+<div id="metrics-wrap"></div>
+<script src="../common/engine.js"></script>
+<script src="../common/ui.js"></script>
+<script>
+const CELL = 30, COLS = 13, ROWS = 9, OX = 5, OY = 12;
+const START = [0, 0], GOAL = [COLS-1, ROWS-1];
+let wallCol = 6;
+let grid, bfsExpanded, astarExpanded, bfsPath, astarPath;
+
+function bfsSearch(grid, start, goal) {
+  const startKey = start.join(','), goalKey = goal.join(',');
+  const queue = [start];
+  const visited = new Set([startKey]);
+  const came = new Map();
+  const expanded = [];
+  while (queue.length) {
+    const cur = queue.shift();
+    const ck = cur.join(',');
+    expanded.push([...cur]);
+    if (ck === goalKey) {
+      const path = [cur]; let k = ck;
+      while (came.has(k)) { const p = came.get(k); path.push(p); k = p.join(','); }
+      return { path: path.reverse(), expanded };
+    }
+    for (const nb of grid.neighbors(cur)) {
+      const nk = nb.join(',');
+      if (!visited.has(nk)) { visited.add(nk); came.set(nk, cur); queue.push(nb); }
+    }
+  }
+  return { path: null, expanded };
+}
+
+function astarTracked(grid, start, goal) {
+  const startKey = start.join(','), goalKey = goal.join(',');
+  const open = [[0, startKey, start]];
+  const came = new Map(), g = new Map([[startKey, 0]]);
+  const expanded = [];
+  while (open.length) {
+    open.sort((a, b) => a[0] - b[0]);
+    const [, ck, cur] = open.shift();
+    expanded.push([...cur]);
+    if (ck === goalKey) {
+      const path = [cur]; let k = ck;
+      while (came.has(k)) { const p = came.get(k); path.push(p); k = p.join(','); }
+      return { path: path.reverse(), expanded };
+    }
+    for (const nb of grid.neighbors(cur)) {
+      const nk = nb.join(',');
+      const ng = (g.get(ck) || 0) + 1;
+      if (ng < (g.get(nk) || Infinity)) {
+        came.set(nk, cur); g.set(nk, ng);
+        open.push([ng + grid.heuristic(nb, goal), nk, nb]);
+      }
+    }
+  }
+  return { path: null, expanded };
+}
+
+function initState() {
+  grid = new Grid(COLS, ROWS);
+  for (let y = 0; y < ROWS - 2; y++) grid.block(wallCol, y);
+  const b = bfsSearch(grid, START, GOAL);
+  const a = astarTracked(grid, START, GOAL);
+  bfsExpanded = b.expanded; bfsPath = b.path;
+  astarExpanded = a.expanded; astarPath = a.path;
+}
+initState();
+
+const ctrl = document.getElementById('controls');
+const cp = UI.panel(ctrl);
+UI.slider(cp, 'Wall column', 2, COLS-2, 1, wallCol, v => { wallCol = v; initState(); });
+const { state } = UI.pauseResetBar(cp, initState);
+
+const met = UI.metrics(document.getElementById('metrics-wrap'),
+  ['BFS expanded', 'A* expanded', 'A* saving %', 'Path len']);
+
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'BFS (uniform)', 'A* (heuristic)', 400, 285);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+function drawSearch(cx, cv, expanded, path, label, color) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  drawGrid(cx, grid, { cell: CELL, ox: OX, oy: OY });
+  // expanded cells
+  cx.fillStyle = 'rgba(25,118,210,0.12)';
+  for (const [x, y] of expanded) cx.fillRect(OX + x*CELL+1, OY + y*CELL+1, CELL-2, CELL-2);
+  if (path) drawGridPath(cx, path, { cell: CELL, ox: OX, oy: OY });
+  drawPoint(cx, OX + START[0]*CELL+CELL/2, OY + START[1]*CELL+CELL/2, '#4caf50', 7);
+  drawPoint(cx, OX + GOAL[0]*CELL+CELL/2, OY + GOAL[1]*CELL+CELL/2, '#ff9800', 7);
+  cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label + ' | expanded: ' + expanded.length, 4, 10);
+}
+
+function draw() {
+  if (!state.paused) {
+    const saving = bfsExpanded.length > 0 ? ((1 - astarExpanded.length / bfsExpanded.length) * 100) : 0;
+    met.update([bfsExpanded.length, astarExpanded.length, saving.toFixed(1) + '%', astarPath ? astarPath.length : '—']);
+  }
+  drawSearch(ctxA, canvasA, bfsExpanded, bfsPath, 'BFS', '#1976d2');
+  drawSearch(ctxB, canvasB, astarExpanded, astarPath, 'A*', '#e53935');
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+<p class="home"><a href="../../index.html">← Home</a></p>
+</body>
+</html>

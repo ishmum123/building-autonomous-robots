@@ -18,9 +18,13 @@ A map turns raw sensor data into a reusable model of the world.
 
 ## Implementation
 
-We will build a minimal `map representation` model in Python.
+We build a minimal `map representation` model in Python.
 
-Open `python/chapter32/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter32/main.py
+```
 
 ## Simulation
 

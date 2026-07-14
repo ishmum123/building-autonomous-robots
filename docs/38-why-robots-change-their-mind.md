@@ -18,9 +18,13 @@ Replanning updates decisions when the world changes.
 
 ## Implementation
 
-We will build a minimal `replanning` model in Python.
+We build a minimal `replanning` model in Python.
 
-Open `python/chapter38/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter38/main.py
+```
 
 ## Simulation
 

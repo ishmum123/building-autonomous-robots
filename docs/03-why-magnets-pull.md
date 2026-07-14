@@ -18,9 +18,13 @@ A magnetic field transfers force across a distance.
 
 ## Implementation
 
-We will build a minimal `magnetic field` model in Python.
+We build a minimal `magnetic field` model in Python.
 
-Open `python/chapter03/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter03/main.py
+```
 
 ## Simulation
 

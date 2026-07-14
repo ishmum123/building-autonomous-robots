@@ -18,9 +18,13 @@ Conductors shape where current flows and therefore where force is produced.
 
 ## Implementation
 
-We will build a minimal `winding` model in Python.
+We build a minimal `winding` model in Python.
 
-Open `python/chapter10/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter10/main.py
+```
 
 ## Simulation
 

@@ -18,9 +18,13 @@ Aggressive control causes overshoot and oscillation.
 
 ## Implementation
 
-We will build a minimal `overshoot` model in Python.
+We build a minimal `overshoot` model in Python.
 
-Open `python/chapter11/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter11/main.py
+```
 
 ## Simulation
 

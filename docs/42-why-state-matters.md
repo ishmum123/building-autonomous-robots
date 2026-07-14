@@ -18,9 +18,13 @@ The right action depends on hidden state, not just current input.
 
 ## Implementation
 
-We will build a minimal `state representation` model in Python.
+We build a minimal `state representation` model in Python.
 
-Open `python/chapter42/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter42/main.py
+```
 
 ## Simulation
 

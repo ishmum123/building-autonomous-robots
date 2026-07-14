@@ -18,9 +18,13 @@ SLAM solves mapping and localization jointly.
 
 ## Implementation
 
-We will build a minimal `SLAM` model in Python.
+We build a minimal `SLAM` model in Python.
 
-Open `python/chapter35/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter35/main.py
+```
 
 ## Simulation
 

@@ -18,9 +18,13 @@ Objects resist changes in velocity. This property is called inertia.
 
 ## Implementation
 
-We will build a minimal `inertia` model in Python.
+We build a minimal `inertia` model in Python.
 
-Open `python/chapter02/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter02/main.py
+```
 
 ## Simulation
 

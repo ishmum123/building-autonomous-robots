@@ -18,9 +18,13 @@ A* uses a heuristic to focus search toward the goal.
 
 ## Implementation
 
-We will build a minimal `A* search` model in Python.
+We build a minimal `A* search` model in Python.
 
-Open `python/chapter37/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter37/main.py
+```
 
 ## Simulation
 

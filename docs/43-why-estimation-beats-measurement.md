@@ -18,9 +18,13 @@ State estimation infers the most likely true state from noisy data.
 
 ## Implementation
 
-We will build a minimal `state estimation` model in Python.
+We build a minimal `state estimation` model in Python.
 
-Open `python/chapter43/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter43/main.py
+```
 
 ## Simulation
 

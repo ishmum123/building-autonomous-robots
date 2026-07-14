@@ -18,9 +18,13 @@ Global positioning is low rate and unreliable near obstacles.
 
 ## Implementation
 
-We will build a minimal `GPS` model in Python.
+We build a minimal `GPS` model in Python.
 
-Open `python/chapter22/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter22/main.py
+```
 
 ## Simulation
 

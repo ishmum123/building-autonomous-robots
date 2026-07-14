@@ -18,9 +18,13 @@ Friction and back-electromotive force oppose rotation.
 
 ## Implementation
 
-We will build a minimal `back-emf and friction` model in Python.
+We build a minimal `back-emf and friction` model in Python.
 
-Open `python/chapter07/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter07/main.py
+```
 
 ## Simulation
 

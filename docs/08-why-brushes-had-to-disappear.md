@@ -18,9 +18,13 @@ Electronic switching can replace mechanical brushes.
 
 ## Implementation
 
-We will build a minimal `brushless motor` model in Python.
+We build a minimal `brushless motor` model in Python.
 
-Open `python/chapter08/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter08/main.py
+```
 
 ## Simulation
 

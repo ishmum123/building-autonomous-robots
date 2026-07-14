@@ -18,9 +18,13 @@ Following trajectories does not generalize to new situations.
 
 ## Implementation
 
-We will build a minimal `behavior cloning` model in Python.
+We build a minimal `behavior cloning` model in Python.
 
-Open `python/chapter39/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter39/main.py
+```
 
 ## Simulation
 

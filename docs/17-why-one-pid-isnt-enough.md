@@ -18,9 +18,13 @@ Nested controllers handle different time scales and variables.
 
 ## Implementation
 
-We will build a minimal `cascade control` model in Python.
+We build a minimal `cascade control` model in Python.
 
-Open `python/chapter17/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter17/main.py
+```
 
 ## Simulation
 

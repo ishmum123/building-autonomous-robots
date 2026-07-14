@@ -18,9 +18,13 @@ A model lets the robot predict outcomes and choose the best sequence.
 
 ## Implementation
 
-We will build a minimal `model predictive control` model in Python.
+We build a minimal `model predictive control` model in Python.
 
-Open `python/chapter44/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter44/main.py
+```
 
 ## Simulation
 

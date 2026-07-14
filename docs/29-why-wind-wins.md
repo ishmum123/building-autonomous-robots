@@ -18,9 +18,13 @@ Controllers must reject external disturbances faster than they grow.
 
 ## Implementation
 
-We will build a minimal `disturbance rejection` model in Python.
+We build a minimal `disturbance rejection` model in Python.
 
-Open `python/chapter29/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter29/main.py
+```
 
 ## Simulation
 

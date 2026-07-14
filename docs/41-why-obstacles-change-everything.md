@@ -18,9 +18,13 @@ Obstacles turn free space into a constrained decision problem.
 
 ## Implementation
 
-We will build a minimal `obstacle avoidance` model in Python.
+We build a minimal `obstacle avoidance` model in Python.
 
-Open `python/chapter41/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter41/main.py
+```
 
 ## Simulation
 

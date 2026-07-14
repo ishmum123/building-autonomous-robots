@@ -18,9 +18,13 @@ Every sensor has noise, bias, and a different frame of reference.
 
 ## Implementation
 
-We will build a minimal `sensor disagreement` model in Python.
+We build a minimal `sensor disagreement` model in Python.
 
-Open `python/chapter23/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter23/main.py
+```
 
 ## Simulation
 

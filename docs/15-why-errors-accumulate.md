@@ -18,9 +18,13 @@ Errors integrate over time, so a controller must remove steady bias.
 
 ## Implementation
 
-We will build a minimal `integration drift` model in Python.
+We build a minimal `integration drift` model in Python.
 
-Open `python/chapter15/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter15/main.py
+```
 
 ## Simulation
 

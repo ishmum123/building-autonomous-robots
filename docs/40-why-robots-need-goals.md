@@ -18,9 +18,13 @@ Goals translate intent into a measure of success.
 
 ## Implementation
 
-We will build a minimal `objective function` model in Python.
+We build a minimal `objective function` model in Python.
 
-Open `python/chapter40/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter40/main.py
+```
 
 ## Simulation
 

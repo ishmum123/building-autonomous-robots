@@ -18,9 +18,13 @@ Without measurement, a controller cannot correct disturbances.
 
 ## Implementation
 
-We will build a minimal `open loop control` model in Python.
+We build a minimal `open loop control` model in Python.
 
-Open `python/chapter14/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter14/main.py
+```
 
 ## Simulation
 

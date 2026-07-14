@@ -18,9 +18,13 @@ Integrating velocity accumulates error without bounds.
 
 ## Implementation
 
-We will build a minimal `dead reckoning` model in Python.
+We build a minimal `dead reckoning` model in Python.
 
-Open `python/chapter33/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter33/main.py
+```
 
 ## Simulation
 

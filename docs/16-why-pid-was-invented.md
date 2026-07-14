@@ -18,9 +18,13 @@ PID blends proportional, integral, and derivative responses.
 
 ## Implementation
 
-We will build a minimal `PID controller` model in Python.
+We build a minimal `PID controller` model in Python.
 
-Open `python/chapter16/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter16/main.py
+```
 
 ## Simulation
 

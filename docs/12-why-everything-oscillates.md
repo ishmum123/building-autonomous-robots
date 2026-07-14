@@ -18,9 +18,13 @@ Energy trades between storage and motion, producing oscillation.
 
 ## Implementation
 
-We will build a minimal `oscillation` model in Python.
+We build a minimal `oscillation` model in Python.
 
-Open `python/chapter12/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter12/main.py
+```
 
 ## Simulation
 

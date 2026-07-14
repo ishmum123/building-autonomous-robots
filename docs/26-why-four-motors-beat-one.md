@@ -18,9 +18,13 @@ Four motors provide lift and counter-torque simultaneously.
 
 ## Implementation
 
-We will build a minimal `quadcopter actuation` model in Python.
+We build a minimal `quadcopter actuation` model in Python.
 
-Open `python/chapter26/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter26/main.py
+```
 
 ## Simulation
 

@@ -18,9 +18,13 @@ A current in a magnetic field experiences a mechanical force.
 
 ## Implementation
 
-We will build a minimal `electromagnetic force` model in Python.
+We build a minimal `electromagnetic force` model in Python.
 
-Open `python/chapter04/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter04/main.py
+```
 
 ## Simulation
 

@@ -18,9 +18,13 @@ Differential thrust creates torques that change attitude.
 
 ## Implementation
 
-We will build a minimal `torque imbalance` model in Python.
+We build a minimal `torque imbalance` model in Python.
 
-Open `python/chapter27/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter27/main.py
+```
 
 ## Simulation
 

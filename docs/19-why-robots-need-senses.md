@@ -18,9 +18,13 @@ Sensors close the loop between the world and the controller.
 
 ## Implementation
 
-We will build a minimal `sensor` model in Python.
+We build a minimal `sensor` model in Python.
 
-Open `python/chapter19/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter19/main.py
+```
 
 ## Simulation
 

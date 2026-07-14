@@ -18,9 +18,13 @@ Integration of noisy rate measurements accumulates bias.
 
 ## Implementation
 
-We will build a minimal `gyroscope` model in Python.
+We build a minimal `gyroscope` model in Python.
 
-Open `python/chapter21/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter21/main.py
+```
 
 ## Simulation
 

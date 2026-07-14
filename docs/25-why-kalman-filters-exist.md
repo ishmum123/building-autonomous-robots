@@ -18,9 +18,13 @@ A Kalman filter optimally blends prediction and measurement.
 
 ## Implementation
 
-We will build a minimal `Kalman filter` model in Python.
+We build a minimal `Kalman filter` model in Python.
 
-Open `python/chapter25/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter25/main.py
+```
 
 ## Simulation
 

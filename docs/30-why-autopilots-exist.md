@@ -18,9 +18,13 @@ An autopilot handles fast stabilization so the human commands intent.
 
 ## Implementation
 
-We will build a minimal `autopilot` model in Python.
+We build a minimal `autopilot` model in Python.
 
-Open `python/chapter30/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter30/main.py
+```
 
 ## Simulation
 

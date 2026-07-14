@@ -18,9 +18,13 @@ Autonomy is the closed loop of sensing, thinking, and acting.
 
 ## Implementation
 
-We will build a minimal `full autonomy stack` model in Python.
+We build a minimal `full autonomy stack` model in Python.
 
-Open `python/chapter45/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter45/main.py
+```
 
 ## Simulation
 

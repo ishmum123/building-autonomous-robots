@@ -18,9 +18,13 @@ Ambiguity arises when different places look identical.
 
 ## Implementation
 
-We will build a minimal `localization ambiguity` model in Python.
+We build a minimal `localization ambiguity` model in Python.
 
-Open `python/chapter34/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter34/main.py
+```
 
 ## Simulation
 

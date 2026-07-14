@@ -350,9 +350,13 @@ Before we name anything, ask yourself:
 
 ## Implementation
 
-We will build a minimal `{ch['key']}` model in Python.
+We build a minimal `{ch['key']}` model in Python.
 
-Open `python/{chapter_dir(i)}/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/{chapter_dir(i)}/main.py
+```
 
 ## Simulation
 

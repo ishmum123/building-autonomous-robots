@@ -18,9 +18,13 @@ Planning searches a high-dimensional space of possible motions.
 
 ## Implementation
 
-We will build a minimal `motion planning` model in Python.
+We build a minimal `motion planning` model in Python.
 
-Open `python/chapter36/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter36/main.py
+```
 
 ## Simulation
 

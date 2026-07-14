@@ -18,9 +18,13 @@ Feedback compares goal to reality and corrects the difference.
 
 ## Implementation
 
-We will build a minimal `feedback loop` model in Python.
+We build a minimal `feedback loop` model in Python.
 
-Open `python/chapter13/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter13/main.py
+```
 
 ## Simulation
 

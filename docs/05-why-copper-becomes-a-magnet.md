@@ -18,9 +18,13 @@ Electric current creates a magnetic field.
 
 ## Implementation
 
-We will build a minimal `electromagnet` model in Python.
+We build a minimal `electromagnet` model in Python.
 
-Open `python/chapter05/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter05/main.py
+```
 
 ## Simulation
 

@@ -18,9 +18,13 @@ Safety margins and fail-safe logic are as important as control.
 
 ## Implementation
 
-We will build a minimal `failure mode` model in Python.
+We build a minimal `failure mode` model in Python.
 
-Open `python/chapter31/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter31/main.py
+```
 
 ## Simulation
 

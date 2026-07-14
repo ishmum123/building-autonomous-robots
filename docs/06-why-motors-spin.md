@@ -18,9 +18,13 @@ A motor switches current at the right moment to keep turning.
 
 ## Implementation
 
-We will build a minimal `motor` model in Python.
+We build a minimal `motor` model in Python.
 
-Open `python/chapter06/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter06/main.py
+```
 
 ## Simulation
 

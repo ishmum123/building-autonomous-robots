@@ -18,9 +18,13 @@ Attitude control and position control are separate but coupled loops.
 
 ## Implementation
 
-We will build a minimal `attitude and position control` model in Python.
+We build a minimal `attitude and position control` model in Python.
 
-Open `python/chapter18/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter18/main.py
+```
 
 ## Simulation
 

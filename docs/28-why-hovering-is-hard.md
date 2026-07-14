@@ -18,9 +18,13 @@ Hover requires balancing thrust against weight in real time.
 
 ## Implementation
 
-We will build a minimal `altitude control` model in Python.
+We build a minimal `altitude control` model in Python.
 
-Open `python/chapter28/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter28/main.py
+```
 
 ## Simulation
 

@@ -18,9 +18,13 @@ Accelerometers measure specific force, not pure acceleration.
 
 ## Implementation
 
-We will build a minimal `accelerometer` model in Python.
+We build a minimal `accelerometer` model in Python.
 
-Open `python/chapter20/main.py` and follow the step-by-step construction.
+Run the implementation:
+
+```bash
+python python/chapter20/main.py
+```
 
 ## Simulation
 

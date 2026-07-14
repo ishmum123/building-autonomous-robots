@@ -20,6 +20,8 @@ Friction and back-electromotive force oppose rotation.
 
 We build a minimal `back-emf and friction` model in Python.
 
+Source: [`python/chapter07/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter07/main.py)  ·  [view in browser](assets/simulations/chapter07/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter07/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter07/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter07/sim.py)  ·  [view in browser](assets/simulations/chapter07/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter07/sim.py
 ```
 
-A browser version is available at `browser/chapter07/index.html`.
+A browser version is available at [`browser/chapter07/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter07/index.html)  ·  [run live](assets/browser/chapter07/index.html).
 
 ## Exercises
 

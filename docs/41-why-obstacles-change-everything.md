@@ -20,6 +20,8 @@ Obstacles turn free space into a constrained decision problem.
 
 We build a minimal `obstacle avoidance` model in Python.
 
+Source: [`python/chapter41/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter41/main.py)  ·  [view in browser](assets/simulations/chapter41/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter41/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter41/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter41/sim.py)  ·  [view in browser](assets/simulations/chapter41/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter41/sim.py
 ```
 
-A browser version is available at `browser/chapter41/index.html`.
+A browser version is available at [`browser/chapter41/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter41/index.html)  ·  [run live](assets/browser/chapter41/index.html).
 
 ## Exercises
 

@@ -20,6 +20,8 @@ Integration of noisy rate measurements accumulates bias.
 
 We build a minimal `gyroscope` model in Python.
 
+Source: [`python/chapter21/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter21/main.py)  ·  [view in browser](assets/simulations/chapter21/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter21/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter21/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter21/sim.py)  ·  [view in browser](assets/simulations/chapter21/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter21/sim.py
 ```
 
-A browser version is available at `browser/chapter21/index.html`.
+A browser version is available at [`browser/chapter21/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter21/index.html)  ·  [run live](assets/browser/chapter21/index.html).
 
 ## Exercises
 

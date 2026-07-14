@@ -20,6 +20,8 @@ Errors integrate over time, so a controller must remove steady bias.
 
 We build a minimal `integration drift` model in Python.
 
+Source: [`python/chapter15/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter15/main.py)  ·  [view in browser](assets/simulations/chapter15/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter15/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter15/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter15/sim.py)  ·  [view in browser](assets/simulations/chapter15/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter15/sim.py
 ```
 
-A browser version is available at `browser/chapter15/index.html`.
+A browser version is available at [`browser/chapter15/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter15/index.html)  ·  [run live](assets/browser/chapter15/index.html).
 
 ## Exercises
 

@@ -20,6 +20,8 @@ A* uses a heuristic to focus search toward the goal.
 
 We build a minimal `A* search` model in Python.
 
+Source: [`python/chapter37/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter37/main.py)  ·  [view in browser](assets/simulations/chapter37/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter37/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter37/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter37/sim.py)  ·  [view in browser](assets/simulations/chapter37/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter37/sim.py
 ```
 
-A browser version is available at `browser/chapter37/index.html`.
+A browser version is available at [`browser/chapter37/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter37/index.html)  ·  [run live](assets/browser/chapter37/index.html).
 
 ## Exercises
 

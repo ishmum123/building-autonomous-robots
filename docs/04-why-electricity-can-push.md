@@ -20,6 +20,8 @@ A current in a magnetic field experiences a mechanical force.
 
 We build a minimal `electromagnetic force` model in Python.
 
+Source: [`python/chapter04/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter04/main.py)  ·  [view in browser](assets/simulations/chapter04/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter04/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter04/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter04/sim.py)  ·  [view in browser](assets/simulations/chapter04/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter04/sim.py
 ```
 
-A browser version is available at `browser/chapter04/index.html`.
+A browser version is available at [`browser/chapter04/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter04/index.html)  ·  [run live](assets/browser/chapter04/index.html).
 
 ## Exercises
 

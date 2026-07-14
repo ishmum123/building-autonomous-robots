@@ -20,6 +20,8 @@ A motor switches current at the right moment to keep turning.
 
 We build a minimal `motor` model in Python.
 
+Source: [`python/chapter06/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter06/main.py)  ·  [view in browser](assets/simulations/chapter06/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter06/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter06/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter06/sim.py)  ·  [view in browser](assets/simulations/chapter06/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter06/sim.py
 ```
 
-A browser version is available at `browser/chapter06/index.html`.
+A browser version is available at [`browser/chapter06/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter06/index.html)  ·  [run live](assets/browser/chapter06/index.html).
 
 ## Exercises
 

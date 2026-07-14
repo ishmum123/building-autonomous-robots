@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Generate the full Building Autonomous Robots curriculum scaffold."""
 
+import os
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+GITHUB_BASE = "https://github.com/ishmum123/building-autonomous-robots/blob/main"
 
 CHAPTER_SEEDS = [
     # Part I — Motion
@@ -352,6 +354,8 @@ Before we name anything, ask yourself:
 
 We build a minimal `{ch['key']}` model in Python.
 
+Source: [`python/{chapter_dir(i)}/main.py`]({GITHUB_BASE}/python/{chapter_dir(i)}/main.py)  ·  [view in browser](assets/simulations/{chapter_dir(i)}/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -360,13 +364,15 @@ python python/{chapter_dir(i)}/main.py
 
 ## Simulation
 
+Source: [`simulations/{chapter_dir(i)}/sim.py`]({GITHUB_BASE}/simulations/{chapter_dir(i)}/sim.py)  ·  [view in browser](assets/simulations/{chapter_dir(i)}/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/{chapter_dir(i)}/sim.py
 ```
 
-A browser version is available at `browser/{chapter_dir(i)}/index.html`.
+A browser version is available at [`browser/{chapter_dir(i)}/index.html`]({GITHUB_BASE}/browser/{chapter_dir(i)}/index.html)  ·  [run live](assets/browser/{chapter_dir(i)}/index.html).
 
 ## Exercises
 
@@ -398,9 +404,9 @@ def generate_discoveries(chapters):
 
 - **Problem:** {ch['problem']}
 - **Key idea:** {ch['idea']}
-- **Python stub:** `python/{chapter_dir(i)}/main.py`
-- **Simulation:** `simulations/{chapter_dir(i)}/sim.py`
-- **Browser sim:** `browser/{chapter_dir(i)}/index.html`
+- **Python:** [`python/{chapter_dir(i)}/main.py`]({GITHUB_BASE}/python/{chapter_dir(i)}/main.py)
+- **Simulation:** [`simulations/{chapter_dir(i)}/sim.py`]({GITHUB_BASE}/simulations/{chapter_dir(i)}/sim.py)
+- **Browser sim:** [`browser/{chapter_dir(i)}/index.html`]({GITHUB_BASE}/browser/{chapter_dir(i)}/index.html)
 - **Continue:** {continue_link}
 """
         path.write_text(content, encoding="utf-8")
@@ -588,6 +594,32 @@ def generate_index(chapters):
     (ROOT / "docs" / "index.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def generate_asset_links(chapters):
+    """Create symlinks under docs/assets/ so MkDocs serves sim/browser files."""
+    assets_sim = ROOT / "docs" / "assets" / "simulations"
+    assets_browser = ROOT / "docs" / "assets" / "browser"
+    assets_sim.mkdir(parents=True, exist_ok=True)
+    assets_browser.mkdir(parents=True, exist_ok=True)
+    for i, _ch in enumerate(chapters, start=1):
+        cdir = chapter_dir(i)
+        # simulations symlink
+        sim_src = ROOT / "simulations" / cdir / "sim.py"
+        sim_link_dir = assets_sim / cdir
+        sim_link_dir.mkdir(parents=True, exist_ok=True)
+        sim_link = sim_link_dir / "sim.py"
+        if sim_link.exists() or sim_link.is_symlink():
+            sim_link.unlink()
+        sim_link.symlink_to(os.path.relpath(sim_src, sim_link_dir))
+        # browser symlink
+        browser_src = ROOT / "browser" / cdir / "index.html"
+        browser_link_dir = assets_browser / cdir
+        browser_link_dir.mkdir(parents=True, exist_ok=True)
+        browser_link = browser_link_dir / "index.html"
+        if browser_link.exists() or browser_link.is_symlink():
+            browser_link.unlink()
+        browser_link.symlink_to(os.path.relpath(browser_src, browser_link_dir))
+
+
 def main():
     generate_docs(CHAPTER_SEEDS)
     generate_discoveries(CHAPTER_SEEDS)
@@ -598,8 +630,9 @@ def main():
     generate_mkdocs_nav(CHAPTER_SEEDS)
     generate_roadmap(CHAPTER_SEEDS)
     generate_index(CHAPTER_SEEDS)
+    generate_asset_links(CHAPTER_SEEDS)
 
-    # Ensure asset directories exist.
+    # Ensure top-level asset directories exist.
     (ROOT / "assets").mkdir(exist_ok=True)
     (ROOT / "assets" / ".gitkeep").write_text("")
     (ROOT / "diagrams").mkdir(exist_ok=True)

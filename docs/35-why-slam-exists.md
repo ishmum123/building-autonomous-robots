@@ -20,6 +20,8 @@ SLAM solves mapping and localization jointly.
 
 We build a minimal `SLAM` model in Python.
 
+Source: [`python/chapter35/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter35/main.py)  ·  [view in browser](assets/simulations/chapter35/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter35/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter35/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter35/sim.py)  ·  [view in browser](assets/simulations/chapter35/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter35/sim.py
 ```
 
-A browser version is available at `browser/chapter35/index.html`.
+A browser version is available at [`browser/chapter35/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter35/index.html)  ·  [run live](assets/browser/chapter35/index.html).
 
 ## Exercises
 

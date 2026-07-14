@@ -20,6 +20,8 @@ Feedback compares goal to reality and corrects the difference.
 
 We build a minimal `feedback loop` model in Python.
 
+Source: [`python/chapter13/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter13/main.py)  ·  [view in browser](assets/simulations/chapter13/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter13/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter13/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter13/sim.py)  ·  [view in browser](assets/simulations/chapter13/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter13/sim.py
 ```
 
-A browser version is available at `browser/chapter13/index.html`.
+A browser version is available at [`browser/chapter13/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter13/index.html)  ·  [run live](assets/browser/chapter13/index.html).
 
 ## Exercises
 

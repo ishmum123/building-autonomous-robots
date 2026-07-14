@@ -20,6 +20,8 @@ Combining sensors with different strengths reduces overall uncertainty.
 
 We build a minimal `sensor fusion` model in Python.
 
+Source: [`python/chapter24/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter24/main.py)  ·  [view in browser](assets/simulations/chapter24/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter24/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter24/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter24/sim.py)  ·  [view in browser](assets/simulations/chapter24/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter24/sim.py
 ```
 
-A browser version is available at `browser/chapter24/index.html`.
+A browser version is available at [`browser/chapter24/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter24/index.html)  ·  [run live](assets/browser/chapter24/index.html).
 
 ## Exercises
 

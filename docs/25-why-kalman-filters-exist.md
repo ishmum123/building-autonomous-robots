@@ -20,6 +20,8 @@ A Kalman filter optimally blends prediction and measurement.
 
 We build a minimal `Kalman filter` model in Python.
 
+Source: [`python/chapter25/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter25/main.py)  ·  [view in browser](assets/simulations/chapter25/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter25/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter25/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter25/sim.py)  ·  [view in browser](assets/simulations/chapter25/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter25/sim.py
 ```
 
-A browser version is available at `browser/chapter25/index.html`.
+A browser version is available at [`browser/chapter25/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter25/index.html)  ·  [run live](assets/browser/chapter25/index.html).
 
 ## Exercises
 

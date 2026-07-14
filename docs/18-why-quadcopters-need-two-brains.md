@@ -20,6 +20,8 @@ Attitude control and position control are separate but coupled loops.
 
 We build a minimal `attitude and position control` model in Python.
 
+Source: [`python/chapter18/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter18/main.py)  ·  [view in browser](assets/simulations/chapter18/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter18/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter18/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter18/sim.py)  ·  [view in browser](assets/simulations/chapter18/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter18/sim.py
 ```
 
-A browser version is available at `browser/chapter18/index.html`.
+A browser version is available at [`browser/chapter18/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter18/index.html)  ·  [run live](assets/browser/chapter18/index.html).
 
 ## Exercises
 

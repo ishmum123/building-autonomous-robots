@@ -2,7 +2,7 @@
 
 - **Problem:** You close your eyes while walking and drift. How does measuring where you are change what you can do?
 - **Key idea:** Feedback compares goal to reality and corrects the difference.
-- **Python stub:** `python/chapter13/main.py`
-- **Simulation:** `simulations/chapter13/sim.py`
-- **Browser sim:** `browser/chapter13/index.html`
+- **Python:** [`python/chapter13/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter13/main.py)
+- **Simulation:** [`simulations/chapter13/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter13/sim.py)
+- **Browser sim:** [`browser/chapter13/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter13/index.html)
 - **Continue:** [Why Guessing Isn't Control](../docs/14-why-guessing-isnt-control.md)

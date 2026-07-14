@@ -20,6 +20,8 @@ Hover requires balancing thrust against weight in real time.
 
 We build a minimal `altitude control` model in Python.
 
+Source: [`python/chapter28/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter28/main.py)  ·  [view in browser](assets/simulations/chapter28/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter28/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter28/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter28/sim.py)  ·  [view in browser](assets/simulations/chapter28/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter28/sim.py
 ```
 
-A browser version is available at `browser/chapter28/index.html`.
+A browser version is available at [`browser/chapter28/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter28/index.html)  ·  [run live](assets/browser/chapter28/index.html).
 
 ## Exercises
 

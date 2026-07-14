@@ -20,6 +20,8 @@ A model lets the robot predict outcomes and choose the best sequence.
 
 We build a minimal `model predictive control` model in Python.
 
+Source: [`python/chapter44/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter44/main.py)  ·  [view in browser](assets/simulations/chapter44/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter44/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter44/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter44/sim.py)  ·  [view in browser](assets/simulations/chapter44/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter44/sim.py
 ```
 
-A browser version is available at `browser/chapter44/index.html`.
+A browser version is available at [`browser/chapter44/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter44/index.html)  ·  [run live](assets/browser/chapter44/index.html).
 
 ## Exercises
 

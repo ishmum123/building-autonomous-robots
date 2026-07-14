@@ -20,6 +20,8 @@ An autopilot handles fast stabilization so the human commands intent.
 
 We build a minimal `autopilot` model in Python.
 
+Source: [`python/chapter30/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter30/main.py)  ·  [view in browser](assets/simulations/chapter30/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter30/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter30/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter30/sim.py)  ·  [view in browser](assets/simulations/chapter30/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter30/sim.py
 ```
 
-A browser version is available at `browser/chapter30/index.html`.
+A browser version is available at [`browser/chapter30/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter30/index.html)  ·  [run live](assets/browser/chapter30/index.html).
 
 ## Exercises
 

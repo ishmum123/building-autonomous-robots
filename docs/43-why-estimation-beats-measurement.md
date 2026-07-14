@@ -20,6 +20,8 @@ State estimation infers the most likely true state from noisy data.
 
 We build a minimal `state estimation` model in Python.
 
+Source: [`python/chapter43/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter43/main.py)  ·  [view in browser](assets/simulations/chapter43/sim.py)
+
 Run the implementation:
 
 ```bash
@@ -28,13 +30,15 @@ python python/chapter43/main.py
 
 ## Simulation
 
+Source: [`simulations/chapter43/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter43/sim.py)  ·  [view in browser](assets/simulations/chapter43/sim.py)
+
 Run the chapter simulation:
 
 ```bash
 python simulations/chapter43/sim.py
 ```
 
-A browser version is available at `browser/chapter43/index.html`.
+A browser version is available at [`browser/chapter43/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter43/index.html)  ·  [run live](assets/browser/chapter43/index.html).
 
 ## Exercises
 

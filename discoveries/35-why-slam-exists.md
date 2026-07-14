@@ -2,7 +2,7 @@
 
 - **Problem:** You need a map to localize, but you need to localize to build a map. How do you do both?
 - **Key idea:** SLAM solves mapping and localization jointly.
-- **Python stub:** `python/chapter35/main.py`
-- **Simulation:** `simulations/chapter35/sim.py`
-- **Browser sim:** `browser/chapter35/index.html`
+- **Python:** [`python/chapter35/main.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/python/chapter35/main.py)
+- **Simulation:** [`simulations/chapter35/sim.py`](https://github.com/ishmum123/building-autonomous-robots/blob/main/simulations/chapter35/sim.py)
+- **Browser sim:** [`browser/chapter35/index.html`](https://github.com/ishmum123/building-autonomous-robots/blob/main/browser/chapter35/index.html)
 - **Continue:** [Why Planning Is Hard](../docs/36-why-planning-is-hard.md)

@@ -1,0 +1,33 @@
+diff --git a/docs/index.md b/docs/index.md
+--- a/docs/index.md
++++ b/docs/index.md
+@@
+-# Building Autonomous Robots From Scratch
+-
+-> Every chapter begins with a question and ends with something that moves.
+-
+-Welcome!
++# Building Autonomous Robots From Scratch
++
++Learn robotics the way humanity could have invented it.
++
++Not by memorizing formulas.
++
++Not by copying tutorials.
++
++By rebuilding every invention from first principles.
++
++Every discovery begins with a question.
++
++Every discovery ends with something that moves.
++
++## Start
++
++- Read: Discovery 01 — Why Wheels Move
++
++## Roadmap
++
++- ✅ Why Wheels Move
++- ⬜ Why Things Refuse to Move
++- ⬜ Why Magnets Pull
++- ⬜ Why Electricity Can Push

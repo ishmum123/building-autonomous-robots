@@ -1,0 +1,11 @@
+site_name: Building Autonomous Robots From Scratch
+theme:
+  name: material
+plugins:
+  - search
+nav:
+  - Home: index.md
+  - Philosophy: philosophy.md
+  - Roadmap: roadmap.md
+  - Part I:
+      - Why Wheels Move: 01-why-wheels-move.md

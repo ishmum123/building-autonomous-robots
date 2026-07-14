@@ -2,30 +2,42 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Why State Matters</title>
+<title>Chapter 42: Why State Matters</title>
 <style>
-  body { font-family: sans-serif; text-align: center; }
-  canvas { border: 1px solid #ccc; margin-top: 1rem; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
+  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
-<h1>Why State Matters</h1>
-<p>Browser simulation placeholder. Replace the canvas script with the chapter-specific interaction.</p>
-<canvas id="sim" width="400" height="300"></canvas>
+<h1>Chapter 42: Why State Matters</h1>
+<p class="key">The right action depends on hidden state, not just current input.</p>
+<canvas id="sim" width="600" height="300"></canvas>
+<script src="../common/engine.js"></script>
 <script>
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
-let t = 0;
+
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.beginPath();
-  ctx.arc(200 + Math.cos(t)*80, 150 + Math.sin(t)*40, 10, 0, Math.PI*2);
-  ctx.fillStyle = '#1976d2';
-  ctx.fill();
-  t += 0.05;
+  ctx.fillStyle = '#333';
+  ctx.fillText('Sensor reading: low battery voltage', 200, 80);
+  ctx.fillStyle = '#e53935';
+  ctx.fillRect(100, 120, 80, 80);
+  ctx.fillStyle = '#4caf50';
+  ctx.fillRect(420, 120, 80, 80);
+  ctx.fillStyle = '#fff';
+  ctx.fillText('Low', 125, 165);
+  ctx.fillText('OK', 450, 165);
+  ctx.fillStyle = '#333';
+  ctx.fillText('Same input, different hidden state → different correct action', 120, 240);
   requestAnimationFrame(draw);
 }
 draw();
+
 </script>
+<p class="home"><a href="../../index.html">← Home</a></p>
 </body>
 </html>

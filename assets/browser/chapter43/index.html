@@ -2,30 +2,48 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Why Estimation Beats Measurement</title>
+<title>Chapter 43: Why Estimation Beats Measurement</title>
 <style>
-  body { font-family: sans-serif; text-align: center; }
-  canvas { border: 1px solid #ccc; margin-top: 1rem; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
+  .key { color: #555; max-width: 600px; margin: 0 auto 1rem auto; font-size: 0.95rem; }
+  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
+  .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
-<h1>Why Estimation Beats Measurement</h1>
-<p>Browser simulation placeholder. Replace the canvas script with the chapter-specific interaction.</p>
-<canvas id="sim" width="400" height="300"></canvas>
+<h1>Chapter 43: Why Estimation Beats Measurement</h1>
+<p class="key">State estimation infers the most likely true state from noisy data.</p>
+<canvas id="sim" width="600" height="300"></canvas>
+<script src="../common/engine.js"></script>
 <script>
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
-let t = 0;
+
+const kf = new Kalman1D(0.01, 1.0);
+let trueVal = 0;
+const path = [];
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.beginPath();
-  ctx.arc(200 + Math.cos(t)*80, 150 + Math.sin(t)*40, 10, 0, Math.PI*2);
-  ctx.fillStyle = '#1976d2';
-  ctx.fill();
-  t += 0.05;
+  trueVal += 0.5;
+  const z = addNoise(trueVal, 1.0);
+  kf.predict(1, 0.5);
+  kf.update(z);
+  path.push({ true: trueVal, raw: z, est: kf.x });
+  if (path.length > 250) path.shift();
+  ctx.strokeStyle = '#4caf50'; ctx.beginPath(); ctx.moveTo(0, 250 - path[0].true);
+  for (let i = 1; i < path.length; i++) ctx.lineTo(i * 2.4, 250 - path[i].true); ctx.stroke();
+  ctx.strokeStyle = '#e53935'; ctx.beginPath(); ctx.moveTo(0, 250 - path[0].raw);
+  for (let i = 1; i < path.length; i++) ctx.lineTo(i * 2.4, 250 - path[i].raw); ctx.stroke();
+  ctx.strokeStyle = '#1976d2'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, 250 - path[0].est);
+  for (let i = 1; i < path.length; i++) ctx.lineTo(i * 2.4, 250 - path[i].est); ctx.stroke();
+  ctx.fillStyle = '#333';
+  ctx.fillText(`State estimation (blue) is often more reliable than a raw measurement (red)`, 10, 20);
   requestAnimationFrame(draw);
 }
 draw();
+
 </script>
+<p class="home"><a href="../../index.html">← Home</a></p>
 </body>
 </html>

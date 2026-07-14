@@ -1,0 +1,8 @@
+# Why Wind Wins — Discovery Notes
+
+- **Problem:** A gust pushes the drone sideways. How can it stay where it was told to be?
+- **Key idea:** Controllers must reject external disturbances faster than they grow.
+- **Python stub:** `python/chapter29/main.py`
+- **Simulation:** `simulations/chapter29/sim.py`
+- **Browser sim:** `browser/chapter29/index.html`
+- **Continue:** Why Autopilots Exist

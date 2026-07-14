@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Maps Matter**
+**Continue → [Why Maps Matter](32-why-maps-matter.md)**

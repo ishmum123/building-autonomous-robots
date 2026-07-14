@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter26/main.py`
 - **Simulation:** `simulations/chapter26/sim.py`
 - **Browser sim:** `browser/chapter26/index.html`
-- **Continue:** Why Quadcopters Flip
+- **Continue:** [Why Quadcopters Flip](../docs/27-why-quadcopters-flip.md)

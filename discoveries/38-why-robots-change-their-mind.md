@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter38/main.py`
 - **Simulation:** `simulations/chapter38/sim.py`
 - **Browser sim:** `browser/chapter38/index.html`
-- **Continue:** Why Following Isn't Understanding
+- **Continue:** [Why Following Isn't Understanding](../docs/39-why-following-isnt-understanding.md)

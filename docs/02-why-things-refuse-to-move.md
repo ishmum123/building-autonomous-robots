@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Magnets Pull**
+**Continue → [Why Magnets Pull](03-why-magnets-pull.md)**

@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why GPS Isn't Enough**
+**Continue → [Why GPS Isn't Enough](22-why-gps-isnt-enough.md)**

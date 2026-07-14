@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter14/main.py`
 - **Simulation:** `simulations/chapter14/sim.py`
 - **Browser sim:** `browser/chapter14/index.html`
-- **Continue:** Why Errors Accumulate
+- **Continue:** [Why Errors Accumulate](../docs/15-why-errors-accumulate.md)

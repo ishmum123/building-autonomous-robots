@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Quadcopters Flip**
+**Continue → [Why Quadcopters Flip](27-why-quadcopters-flip.md)**

@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter18/main.py`
 - **Simulation:** `simulations/chapter18/sim.py`
 - **Browser sim:** `browser/chapter18/index.html`
-- **Continue:** Why Robots Need Senses
+- **Continue:** [Why Robots Need Senses](../docs/19-why-robots-need-senses.md)

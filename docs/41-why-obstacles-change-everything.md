@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why State Matters**
+**Continue → [Why State Matters](42-why-state-matters.md)**

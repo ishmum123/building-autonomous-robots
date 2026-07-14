@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter41/main.py`
 - **Simulation:** `simulations/chapter41/sim.py`
 - **Browser sim:** `browser/chapter41/index.html`
-- **Continue:** Why State Matters
+- **Continue:** [Why State Matters](../docs/42-why-state-matters.md)

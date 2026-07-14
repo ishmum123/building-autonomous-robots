@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter04/main.py`
 - **Simulation:** `simulations/chapter04/sim.py`
 - **Browser sim:** `browser/chapter04/index.html`
-- **Continue:** Why Copper Becomes a Magnet
+- **Continue:** [Why Copper Becomes a Magnet](../docs/05-why-copper-becomes-a-magnet.md)

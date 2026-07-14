@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Decisions Need Models**
+**Continue → [Why Decisions Need Models](44-why-decisions-need-models.md)**

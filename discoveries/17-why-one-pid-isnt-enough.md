@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter17/main.py`
 - **Simulation:** `simulations/chapter17/sim.py`
 - **Browser sim:** `browser/chapter17/index.html`
-- **Continue:** Why Quadcopters Need Two Brains
+- **Continue:** [Why Quadcopters Need Two Brains](../docs/18-why-quadcopters-need-two-brains.md)

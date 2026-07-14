@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Robots Change Their Mind**
+**Continue → [Why Robots Change Their Mind](38-why-robots-change-their-mind.md)**

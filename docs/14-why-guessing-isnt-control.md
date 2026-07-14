@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Errors Accumulate**
+**Continue → [Why Errors Accumulate](15-why-errors-accumulate.md)**

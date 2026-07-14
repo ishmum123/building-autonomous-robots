@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter44/main.py`
 - **Simulation:** `simulations/chapter44/sim.py`
 - **Browser sim:** `browser/chapter44/index.html`
-- **Continue:** Why Autonomous Drones Work
+- **Continue:** [Why Autonomous Drones Work](../docs/45-why-autonomous-drones-work.md)

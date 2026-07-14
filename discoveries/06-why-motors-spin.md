@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter06/main.py`
 - **Simulation:** `simulations/chapter06/sim.py`
 - **Browser sim:** `browser/chapter06/index.html`
-- **Continue:** Why Motors Stop
+- **Continue:** [Why Motors Stop](../docs/07-why-motors-stop.md)

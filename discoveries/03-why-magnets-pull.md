@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter03/main.py`
 - **Simulation:** `simulations/chapter03/sim.py`
 - **Browser sim:** `browser/chapter03/index.html`
-- **Continue:** Why Electricity Can Push
+- **Continue:** [Why Electricity Can Push](../docs/04-why-electricity-can-push.md)

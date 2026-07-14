@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Three Wires Are Better Than Two**
+**Continue → [Why Three Wires Are Better Than Two](09-why-three-wires-are-better-than-two.md)**

@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter37/main.py`
 - **Simulation:** `simulations/chapter37/sim.py`
 - **Browser sim:** `browser/chapter37/index.html`
-- **Continue:** Why Robots Change Their Mind
+- **Continue:** [Why Robots Change Their Mind](../docs/38-why-robots-change-their-mind.md)

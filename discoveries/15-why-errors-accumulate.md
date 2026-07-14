@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter15/main.py`
 - **Simulation:** `simulations/chapter15/sim.py`
 - **Browser sim:** `browser/chapter15/index.html`
-- **Continue:** Why PID Was Invented
+- **Continue:** [Why PID Was Invented](../docs/16-why-pid-was-invented.md)

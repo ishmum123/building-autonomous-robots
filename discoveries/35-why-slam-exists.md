@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter35/main.py`
 - **Simulation:** `simulations/chapter35/sim.py`
 - **Browser sim:** `browser/chapter35/index.html`
-- **Continue:** Why Planning Is Hard
+- **Continue:** [Why Planning Is Hard](../docs/36-why-planning-is-hard.md)

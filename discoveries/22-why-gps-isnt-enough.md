@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter22/main.py`
 - **Simulation:** `simulations/chapter22/sim.py`
 - **Browser sim:** `browser/chapter22/index.html`
-- **Continue:** Why Sensors Disagree
+- **Continue:** [Why Sensors Disagree](../docs/23-why-sensors-disagree.md)

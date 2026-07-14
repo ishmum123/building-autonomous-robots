@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter34/main.py`
 - **Simulation:** `simulations/chapter34/sim.py`
 - **Browser sim:** `browser/chapter34/index.html`
-- **Continue:** Why SLAM Exists
+- **Continue:** [Why SLAM Exists](../docs/35-why-slam-exists.md)

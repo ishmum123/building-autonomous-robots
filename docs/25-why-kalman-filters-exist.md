@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Four Motors Beat One**
+**Continue → [Why Four Motors Beat One](26-why-four-motors-beat-one.md)**

@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Feedback Changes Everything**
+**Continue → [Why Feedback Changes Everything](13-why-feedback-changes-everything.md)**

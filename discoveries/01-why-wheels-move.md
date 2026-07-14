@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter01/main.py`
 - **Simulation:** `simulations/chapter01/sim.py`
 - **Browser sim:** `browser/chapter01/index.html`
-- **Continue:** Why Things Refuse to Move
+- **Continue:** [Why Things Refuse to Move](../docs/02-why-things-refuse-to-move.md)

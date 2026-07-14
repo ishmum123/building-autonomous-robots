@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Wind Wins**
+**Continue → [Why Wind Wins](29-why-wind-wins.md)**

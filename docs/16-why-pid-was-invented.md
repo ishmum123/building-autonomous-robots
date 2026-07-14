@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why One PID Isn't Enough**
+**Continue → [Why One PID Isn't Enough](17-why-one-pid-isnt-enough.md)**

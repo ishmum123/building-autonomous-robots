@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter07/main.py`
 - **Simulation:** `simulations/chapter07/sim.py`
 - **Browser sim:** `browser/chapter07/index.html`
-- **Continue:** Why Brushes Had to Disappear
+- **Continue:** [Why Brushes Had to Disappear](../docs/08-why-brushes-had-to-disappear.md)

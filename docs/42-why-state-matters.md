@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Estimation Beats Measurement**
+**Continue → [Why Estimation Beats Measurement](43-why-estimation-beats-measurement.md)**

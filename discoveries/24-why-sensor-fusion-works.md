@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter24/main.py`
 - **Simulation:** `simulations/chapter24/sim.py`
 - **Browser sim:** `browser/chapter24/index.html`
-- **Continue:** Why Kalman Filters Exist
+- **Continue:** [Why Kalman Filters Exist](../docs/25-why-kalman-filters-exist.md)

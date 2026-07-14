@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Brushes Had to Disappear**
+**Continue → [Why Brushes Had to Disappear](08-why-brushes-had-to-disappear.md)**

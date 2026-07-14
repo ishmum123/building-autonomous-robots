@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter12/main.py`
 - **Simulation:** `simulations/chapter12/sim.py`
 - **Browser sim:** `browser/chapter12/index.html`
-- **Continue:** Why Feedback Changes Everything
+- **Continue:** [Why Feedback Changes Everything](../docs/13-why-feedback-changes-everything.md)

@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Copper Becomes a Magnet**
+**Continue → [Why Copper Becomes a Magnet](05-why-copper-becomes-a-magnet.md)**

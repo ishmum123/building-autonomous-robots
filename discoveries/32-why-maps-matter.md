@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter32/main.py`
 - **Simulation:** `simulations/chapter32/sim.py`
 - **Browser sim:** `browser/chapter32/index.html`
-- **Continue:** Why Dead Reckoning Fails
+- **Continue:** [Why Dead Reckoning Fails](../docs/33-why-dead-reckoning-fails.md)

@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Sensor Fusion Works**
+**Continue → [Why Sensor Fusion Works](24-why-sensor-fusion-works.md)**

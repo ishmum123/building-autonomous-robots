@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter28/main.py`
 - **Simulation:** `simulations/chapter28/sim.py`
 - **Browser sim:** `browser/chapter28/index.html`
-- **Continue:** Why Wind Wins
+- **Continue:** [Why Wind Wins](../docs/29-why-wind-wins.md)

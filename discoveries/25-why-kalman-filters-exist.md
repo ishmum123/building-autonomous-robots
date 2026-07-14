@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter25/main.py`
 - **Simulation:** `simulations/chapter25/sim.py`
 - **Browser sim:** `browser/chapter25/index.html`
-- **Continue:** Why Four Motors Beat One
+- **Continue:** [Why Four Motors Beat One](../docs/26-why-four-motors-beat-one.md)

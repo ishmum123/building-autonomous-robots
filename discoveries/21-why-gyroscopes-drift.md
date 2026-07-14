@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter21/main.py`
 - **Simulation:** `simulations/chapter21/sim.py`
 - **Browser sim:** `browser/chapter21/index.html`
-- **Continue:** Why GPS Isn't Enough
+- **Continue:** [Why GPS Isn't Enough](../docs/22-why-gps-isnt-enough.md)

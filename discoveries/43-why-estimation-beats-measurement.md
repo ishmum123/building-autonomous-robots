@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter43/main.py`
 - **Simulation:** `simulations/chapter43/sim.py`
 - **Browser sim:** `browser/chapter43/index.html`
-- **Continue:** Why Decisions Need Models
+- **Continue:** [Why Decisions Need Models](../docs/44-why-decisions-need-models.md)

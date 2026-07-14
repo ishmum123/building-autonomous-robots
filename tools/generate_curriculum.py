@@ -312,16 +312,24 @@ def next_title(chapters, index: int) -> str:
     return "the next discovery"
 
 
+def next_slug(chapters, index: int) -> str | None:
+    if index < len(chapters) - 1:
+        return f"{index + 2:02d}-{slugify(chapters[index + 1]['title'])}.md"
+    return None
+
+
 def generate_docs(chapters):
     docs_root = ROOT / "docs"
     docs_root.mkdir(exist_ok=True)
     for i, ch in enumerate(chapters, start=1):
         slug = f"{i:02d}-{slugify(ch['title'])}.md"
         path = docs_root / slug
-        if path.exists():
-            # Do not overwrite hand-written chapters (e.g. Chapter 01).
+        if path.name == "01-why-wheels-move.md":
+            # Preserve the hand-written first chapter.
             continue
         nt = next_title(chapters, i - 1)
+        ns = next_slug(chapters, i - 1)
+        continue_line = f"**Continue → [{nt}]({ns})**" if ns else f"**Continue → {nt}**"
         content = f"""# {ch['title']}
 
 ## The Problem
@@ -368,7 +376,7 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → {nt}**
+{continue_line}
 """
         path.write_text(content, encoding="utf-8")
 
@@ -380,6 +388,8 @@ def generate_discoveries(chapters):
         slug = f"{i:02d}-{slugify(ch['title'])}.md"
         path = disc_root / slug
         nt = next_title(chapters, i - 1)
+        ns = next_slug(chapters, i - 1)
+        continue_link = f"[{nt}](../docs/{ns})" if ns else nt
         content = f"""# {ch['title']} — Discovery Notes
 
 - **Problem:** {ch['problem']}
@@ -387,7 +397,7 @@ def generate_discoveries(chapters):
 - **Python stub:** `python/{chapter_dir(i)}/main.py`
 - **Simulation:** `simulations/{chapter_dir(i)}/sim.py`
 - **Browser sim:** `browser/{chapter_dir(i)}/index.html`
-- **Continue:** {nt}
+- **Continue:** {continue_link}
 """
         path.write_text(content, encoding="utf-8")
 
@@ -534,9 +544,44 @@ def generate_roadmap(chapters):
         for i in range(start, end + 1):
             ch = chapters[i - 1]
             mark = "x" if i == 1 else " "
-            lines.append(f"- [{mark}] {ch['title']}")
+            slug = f"{i:02d}-{slugify(ch['title'])}.md"
+            lines.append(f"- [{mark}] [{ch['title']}]({slug})")
         lines.append("")
     (ROOT / "docs" / "roadmap.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def generate_index(chapters):
+    lines = [
+        "# Building Autonomous Robots From Scratch",
+        "",
+        "Learn robotics the way humanity could have invented it.",
+        "",
+        "Not by memorizing formulas.",
+        "",
+        "Not by copying tutorials.",
+        "",
+        "By rebuilding every invention from first principles.",
+        "",
+        "Every discovery begins with a question.",
+        "",
+        "Every discovery ends with something that moves.",
+        "",
+        "## Start",
+        "",
+        f"- Read: [Discovery 01 — {chapters[0]['title']}](01-{slugify(chapters[0]['title'])}.md)",
+        "",
+        "## Roadmap",
+        "",
+    ]
+    for part_name, start, end in PART_RANGES:
+        lines.append(f"- {part_name}")
+        for i in range(start, end + 1):
+            ch = chapters[i - 1]
+            mark = "x" if i == 1 else " "
+            slug = f"{i:02d}-{slugify(ch['title'])}.md"
+            lines.append(f"  - [{mark}] [{ch['title']}]({slug})")
+    lines.extend(["", "[View the full roadmap](roadmap.md)"])
+    (ROOT / "docs" / "index.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def main():
@@ -548,6 +593,7 @@ def main():
     generate_simulations(CHAPTER_SEEDS)
     generate_mkdocs_nav(CHAPTER_SEEDS)
     generate_roadmap(CHAPTER_SEEDS)
+    generate_index(CHAPTER_SEEDS)
 
     # Ensure asset directories exist.
     (ROOT / "assets").mkdir(exist_ok=True)

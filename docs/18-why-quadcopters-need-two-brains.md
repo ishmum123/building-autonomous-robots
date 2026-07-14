@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Robots Need Senses**
+**Continue → [Why Robots Need Senses](19-why-robots-need-senses.md)**

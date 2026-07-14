@@ -34,4 +34,4 @@ These ideas will appear throughout robotics.
 
 ---
 
-**Continue → Why Things Refuse to Move**
+**Continue → [Why Things Refuse to Move](02-why-things-refuse-to-move.md)**

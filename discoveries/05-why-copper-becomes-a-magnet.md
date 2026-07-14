@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter05/main.py`
 - **Simulation:** `simulations/chapter05/sim.py`
 - **Browser sim:** `browser/chapter05/index.html`
-- **Continue:** Why Motors Spin
+- **Continue:** [Why Motors Spin](../docs/06-why-motors-spin.md)

@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Autopilots Exist**
+**Continue → [Why Autopilots Exist](30-why-autopilots-exist.md)**

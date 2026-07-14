@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter10/main.py`
 - **Simulation:** `simulations/chapter10/sim.py`
 - **Browser sim:** `browser/chapter10/index.html`
-- **Continue:** Why Faster Isn't Better
+- **Continue:** [Why Faster Isn't Better](../docs/11-why-faster-isnt-better.md)

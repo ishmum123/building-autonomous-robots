@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter02/main.py`
 - **Simulation:** `simulations/chapter02/sim.py`
 - **Browser sim:** `browser/chapter02/index.html`
-- **Continue:** Why Magnets Pull
+- **Continue:** [Why Magnets Pull](../docs/03-why-magnets-pull.md)

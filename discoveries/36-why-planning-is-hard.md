@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter36/main.py`
 - **Simulation:** `simulations/chapter36/sim.py`
 - **Browser sim:** `browser/chapter36/index.html`
-- **Continue:** Why A* Works
+- **Continue:** [Why A* Works](../docs/37-why-astar-works.md)

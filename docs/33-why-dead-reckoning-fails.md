@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Robots Get Lost**
+**Continue → [Why Robots Get Lost](34-why-robots-get-lost.md)**

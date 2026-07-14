@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter09/main.py`
 - **Simulation:** `simulations/chapter09/sim.py`
 - **Browser sim:** `browser/chapter09/index.html`
-- **Continue:** Why Motors Need Conductors
+- **Continue:** [Why Motors Need Conductors](../docs/10-why-motors-need-conductors.md)

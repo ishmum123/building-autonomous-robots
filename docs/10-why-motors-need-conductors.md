@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Faster Isn't Better**
+**Continue → [Why Faster Isn't Better](11-why-faster-isnt-better.md)**

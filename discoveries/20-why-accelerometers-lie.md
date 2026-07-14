@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter20/main.py`
 - **Simulation:** `simulations/chapter20/sim.py`
 - **Browser sim:** `browser/chapter20/index.html`
-- **Continue:** Why Gyroscopes Drift
+- **Continue:** [Why Gyroscopes Drift](../docs/21-why-gyroscopes-drift.md)

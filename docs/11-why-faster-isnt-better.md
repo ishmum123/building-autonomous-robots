@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Everything Oscillates**
+**Continue → [Why Everything Oscillates](12-why-everything-oscillates.md)**

@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter16/main.py`
 - **Simulation:** `simulations/chapter16/sim.py`
 - **Browser sim:** `browser/chapter16/index.html`
-- **Continue:** Why One PID Isn't Enough
+- **Continue:** [Why One PID Isn't Enough](../docs/17-why-one-pid-isnt-enough.md)

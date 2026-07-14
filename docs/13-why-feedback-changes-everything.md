@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Guessing Isn't Control**
+**Continue → [Why Guessing Isn't Control](14-why-guessing-isnt-control.md)**

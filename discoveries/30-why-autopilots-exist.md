@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter30/main.py`
 - **Simulation:** `simulations/chapter30/sim.py`
 - **Browser sim:** `browser/chapter30/index.html`
-- **Continue:** Why Drones Crash
+- **Continue:** [Why Drones Crash](../docs/31-why-drones-crash.md)

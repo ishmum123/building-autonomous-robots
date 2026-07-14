@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Quadcopters Need Two Brains**
+**Continue → [Why Quadcopters Need Two Brains](18-why-quadcopters-need-two-brains.md)**

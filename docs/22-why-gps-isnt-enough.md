@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Sensors Disagree**
+**Continue → [Why Sensors Disagree](23-why-sensors-disagree.md)**

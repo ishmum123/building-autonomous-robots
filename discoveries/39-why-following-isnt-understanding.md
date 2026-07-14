@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter39/main.py`
 - **Simulation:** `simulations/chapter39/sim.py`
 - **Browser sim:** `browser/chapter39/index.html`
-- **Continue:** Why Robots Need Goals
+- **Continue:** [Why Robots Need Goals](../docs/40-why-robots-need-goals.md)

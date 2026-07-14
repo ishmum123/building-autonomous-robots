@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter29/main.py`
 - **Simulation:** `simulations/chapter29/sim.py`
 - **Browser sim:** `browser/chapter29/index.html`
-- **Continue:** Why Autopilots Exist
+- **Continue:** [Why Autopilots Exist](../docs/30-why-autopilots-exist.md)

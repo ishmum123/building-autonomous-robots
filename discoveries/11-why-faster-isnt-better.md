@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter11/main.py`
 - **Simulation:** `simulations/chapter11/sim.py`
 - **Browser sim:** `browser/chapter11/index.html`
-- **Continue:** Why Everything Oscillates
+- **Continue:** [Why Everything Oscillates](../docs/12-why-everything-oscillates.md)

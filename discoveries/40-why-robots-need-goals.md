@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter40/main.py`
 - **Simulation:** `simulations/chapter40/sim.py`
 - **Browser sim:** `browser/chapter40/index.html`
-- **Continue:** Why Obstacles Change Everything
+- **Continue:** [Why Obstacles Change Everything](../docs/41-why-obstacles-change-everything.md)

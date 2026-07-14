@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Motors Spin**
+**Continue → [Why Motors Spin](06-why-motors-spin.md)**

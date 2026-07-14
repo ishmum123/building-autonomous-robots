@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Robots Need Goals**
+**Continue → [Why Robots Need Goals](40-why-robots-need-goals.md)**

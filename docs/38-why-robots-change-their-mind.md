@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Following Isn't Understanding**
+**Continue → [Why Following Isn't Understanding](39-why-following-isnt-understanding.md)**

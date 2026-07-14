@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter33/main.py`
 - **Simulation:** `simulations/chapter33/sim.py`
 - **Browser sim:** `browser/chapter33/index.html`
-- **Continue:** Why Robots Get Lost
+- **Continue:** [Why Robots Get Lost](../docs/34-why-robots-get-lost.md)

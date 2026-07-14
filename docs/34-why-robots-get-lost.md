@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why SLAM Exists**
+**Continue → [Why SLAM Exists](35-why-slam-exists.md)**

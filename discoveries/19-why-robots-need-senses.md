@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter19/main.py`
 - **Simulation:** `simulations/chapter19/sim.py`
 - **Browser sim:** `browser/chapter19/index.html`
-- **Continue:** Why Accelerometers Lie
+- **Continue:** [Why Accelerometers Lie](../docs/20-why-accelerometers-lie.md)

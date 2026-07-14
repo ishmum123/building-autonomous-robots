@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Dead Reckoning Fails**
+**Continue → [Why Dead Reckoning Fails](33-why-dead-reckoning-fails.md)**

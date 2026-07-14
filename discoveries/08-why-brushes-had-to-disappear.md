@@ -5,4 +5,4 @@
 - **Python stub:** `python/chapter08/main.py`
 - **Simulation:** `simulations/chapter08/sim.py`
 - **Browser sim:** `browser/chapter08/index.html`
-- **Continue:** Why Three Wires Are Better Than Two
+- **Continue:** [Why Three Wires Are Better Than Two](../docs/09-why-three-wires-are-better-than-two.md)

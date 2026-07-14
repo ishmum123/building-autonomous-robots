@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Kalman Filters Exist**
+**Continue → [Why Kalman Filters Exist](25-why-kalman-filters-exist.md)**

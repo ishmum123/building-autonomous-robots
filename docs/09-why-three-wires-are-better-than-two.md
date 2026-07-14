@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Motors Need Conductors**
+**Continue → [Why Motors Need Conductors](10-why-motors-need-conductors.md)**

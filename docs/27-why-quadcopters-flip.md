@@ -44,4 +44,4 @@ Real systems add noise, latency, and power limits. The model we built is the sim
 
 ---
 
-**Continue → Why Hovering Is Hard**
+**Continue → [Why Hovering Is Hard](28-why-hovering-is-hard.md)**

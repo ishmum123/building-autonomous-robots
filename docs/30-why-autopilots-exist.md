@@ -75,7 +75,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` implements three independent control loops with different update rates and state inputs. The stabilization loop (fast) reads IMU; the guidance loop (medium) reads GPS and outputs attitude setpoints to stabilization; the mission sequencer (slow) advances through waypoints and sets guidance targets. `browser/chapter30/index.html` shows active mode at each layer, loop update frequency, and error at each control level simultaneously.
+`browser/chapter30/index.html` runs an attitude loop (`autoPid = new PID(kpAtt, 0, 0.6, 0)`) every tick and an outer human-rate loop (`if (t % humanRate === 0)`) gated by a `humanRate` slider — the two timescales are the hierarchy. A `gustStrength` slider drives `getGust(t)`, a step-function disturbance applied to the drone's body. The sim uses no GPS; the outer loop supplies a new attitude setpoint at the configured rate, and the inner loop executes it every tick. `browser/common/engine.js` provides `Quadcopter` and `PID`.
 
 ## When It Breaks
 

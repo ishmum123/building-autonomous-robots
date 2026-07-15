@@ -69,7 +69,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/chapter42/index.html` simulates two drones with identical current sensor readings but different histories, comparing a memoryless reactive controller versus a state-aware controller. `browser/common/engine.js` maintains a rolling window of sensor history to compute derived state variables (drain rate = Δbattery / Δtime over last 60 seconds; mission elapsed time; phase flag). The control law reads from the full state vector; watch the decision diverge between drones even as their instantaneous sensor readings remain identical.
+`browser/chapter42/index.html` runs two drones: the stateless controller acts on `addNoise(battery, noiseStd)` each tick with no memory; the state-aware controller tracks battery with `kf = new Kalman1D(0.0001, 0.03)`, calling `kf.predict(1, -drainRate)` and `kf.update(rawVolt)` each tick. Both decide RTB vs FLY at a threshold of 0.3; `drainRate` and `noiseStd` sliders adjust the scenario. The strip plot shows true battery, stateless reading, and Kalman estimate — the state-aware drone makes the RTB call earlier and more reliably. `browser/common/engine.js` provides `Kalman1D` and `addNoise`.
 
 ## When It Breaks
 

@@ -63,7 +63,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/chapter33/index.html` runs a 2D navigation scenario with a configurable IMU drift rate and GPS fix interval. `browser/common/engine.js` implements the discrete integration with additive bias and noise per timestep. The true trajectory (known) is plotted alongside the dead-reckoned estimate, so you can watch error accumulate between fixes and reset at each fix. Look for the correction step: each GPS fix computes the error between estimated and measured position and directly resets the dead-reckoned state — no integration involved.
+`browser/chapter33/index.html` integrates dead-reckoning position inline: `drX += addNoise(trueVel, velNoise)` each tick, and resets to `gpsX = addNoise(trueX, 1.5)` every `GPS_RATE = 60` ticks. `browser/common/engine.js` provides `addNoise`; the integration and GPS correction are both inline in the HTML. The strip plot shows dead-reckoned position diverging between fixes and snapping back on each GPS update — the core mechanism of aided inertial navigation.
 
 ## When It Breaks
 

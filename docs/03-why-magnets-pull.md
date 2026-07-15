@@ -69,7 +69,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` models the magnetic field as a dipole potential and computes force via the field gradient. `browser/chapter03/index.html` renders field lines as streamlines and lets you place ferromagnetic objects to observe attraction/repulsion. The engine's `Body` primitive carries a magnetic moment property that drives field-mediated forces.
+`browser/common/engine.js` provides `Body` and `Vec`. The attraction physics lives entirely in `browser/chapter03/index.html`: each frame it computes `forceMag = fieldStrength / (dist * dist)` — a 1/r² inline approximation rather than a full dipole model — builds `forceVec` from the direction vector, and calls `nail.addForce(forceVec)` followed by `nail.step(0.016)`. This is enough to show the distance dependence: halving separation quadruples force.
 
 ## When It Breaks
 

@@ -73,7 +73,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/chapter44/index.html` implements a simplified 1D MPC with a battery-dynamics model. At each timestep, the MPC solver runs 30 forward simulation steps (6 minutes × 0.2 s per step) with the current wind and battery state, checking whether the simulated drone can complete the mission and return. `browser/common/engine.js` implements the forward simulator separately from the main physics — this is the "model" in MPC. Watch the predicted return battery (shown in the UI) change dynamically as wind changes, and observe how MPC aborts at a higher battery level than the fixed-threshold controller when wind is strong.
+`browser/chapter44/index.html` runs `qA` (reactive) and `qB` (model-based) as `Quadcopter` instances. The reactive drone uses bang-bang logic — `thrust = distToGnd < reactThresh ? high : low` — controlled by `altPidA = new PID(2.0, 0.02, 0.5, TARGET_Y)`; the model-based drone uses the smoother `altPidB = new PID(4.0, 0.05, 1.2, TARGET_Y)`. A `modelHorizon` slider is present in the UI but does not drive any sim logic. The sim simplifies the model-based concept to PID tuning versus bang-bang — enough to show that anticipating dynamics produces smoother descent. `browser/common/engine.js` provides `Quadcopter` and `PID`.
 
 ## When It Breaks
 

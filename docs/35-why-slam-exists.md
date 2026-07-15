@@ -69,7 +69,11 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/chapter35/index.html` implements a 2D pose graph SLAM. Each vehicle pose is a node; odometry edges connect consecutive nodes; loop closure edges connect poses that observe the same landmark. `browser/common/engine.js` runs Gauss-Newton minimization on the pose graph at each loop closure event. Watch the node positions shift during optimization — the global consistency update distributes loop closure correction across all nodes proportionally to edge strength, not just at the closure point. Compare the map before and after the first loop closure to see global consistency emerge.
+`browser/chapter35/index.html` implements a 2D pose-graph SLAM demo entirely in the sim file. The robot drives a rectangular loop, accumulating one node per odometry step (stored in `nodes`). Each step adds an odometry edge (`edges` array: `{i, j, dx, dy}` — the commanded displacement between consecutive nodes). Heading and translational noise (`odomNoise`, `angleNoise`) cause drift to grow over the loop.
+
+When the robot completes the loop, `attemptLoopClosure` adds a closure edge connecting the last node back to node 0, with the observed residual displacement as the constraint. It then calls `optimizePoseGraph(slamNodes, edges, optIters)`, which runs gradient-descent (not Gauss-Newton): for each edge the residual `(nodes[j] - nodes[i]) - (dx, dy)` is computed and used as a gradient signal to nudge all non-anchor nodes. Node 0 is fixed as the anchor. After `optIters` iterations the corrected node positions are stored in `slamNodes`.
+
+The left canvas shows the drifted odometry path (red); the right shows the SLAM-optimized path (blue) after loop closure. Ground truth (faint green) is drawn on both. The strip plot shows end-node position error before and after optimization.
 
 ## When It Breaks
 

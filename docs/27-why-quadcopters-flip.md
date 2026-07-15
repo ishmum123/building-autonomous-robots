@@ -81,7 +81,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` implements two parallel attitude estimators: one using Euler angle integration and one using quaternion multiplication. Gyroscope rates are integrated via dq/dt = 0.5 × q × [0, ω_x, ω_y, ω_z]. The quaternion is renormalized every update. The attitude controller error in quaternion mode is the vector part of (q_target)* × q_current. `browser/chapter27/index.html` shows both representations simultaneously during aggressive maneuvers.
+`browser/common/engine.js` provides `Quadcopter` and `PID`. `browser/chapter27/index.html` runs two `Quadcopter` instances: `qA` receives no attitude control and flips freely, while `qB` is stabilized by `attPid = new PID(kpAtt, 0, 0.6, 0)` calling `attPid.update(qB.body.angle, 0.016)` each tick and feeding the result back through `setMotors`. The sim uses Euler angle integration throughout — quaternions are the conceptual motivation; the observable difference is that the PID-controlled drone holds attitude where the uncontrolled one does not.
 
 ## When It Breaks
 

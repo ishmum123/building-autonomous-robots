@@ -79,7 +79,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` models aerodynamic drag as F_drag = 0.5 × ρ × C_D × A × (v_wind − v_drone)², applied in the wind direction. The outer position loop computes velocity setpoint; the velocity loop computes tilt setpoint; the inner attitude loop executes tilt. Wind is a configurable stochastic process with configurable gust variance. `browser/chapter29/index.html` shows position error, velocity error, tilt command, and wind speed on synchronized time axes.
+`browser/chapter29/index.html` uses two `PID` instances (`pidX`, `pidY`) for position hold and applies a step-function wind via `getWind(t)` — on between `WIND_START = 120` and `WIND_END = 300` ticks, zero otherwise. Linear drag is applied inline as `vel.mul(-0.5)`. The sim simplifies aerodynamics to a step disturbance and linear damping — enough to show how the integral term accumulates to cancel a sustained wind offset. `browser/common/engine.js` provides `Quadcopter` and `PID`.
 
 ## When It Breaks
 

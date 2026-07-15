@@ -80,7 +80,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` simulates GPS as position + noise with configurable outages and multipath spikes. The IMU runs at high rate continuously. `browser/chapter22/index.html` shows GPS-only and GPS/IMU-integrated trajectories in the same view, with a coverage map marking GPS-denied zones and a position-error time series.
+`browser/common/engine.js` provides `Body`, `GPS`, and `addNoise`. The `GPS` class adds Gaussian noise at a configurable `updateRate` and returns `null` on skipped frames; `browser/chapter22/index.html` calls `gps.read(drone)` and holds the last non-null fix as the GPS estimate. Dead-reckoning is inline: `drEstX += (drone.vel.x + imuBias) * 0.016`, accumulating bias each frame. The strip plot shows GPS error (staircase pattern between fixes) vs dead-reckoning error (linear drift), making the complementary failure modes visible without a separate multipath or coverage-map layer.
 
 ## When It Breaks
 

@@ -69,7 +69,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/chapter41/index.html` shows the geometric obstacles alongside the inflated configuration space obstacles, updated in real time as position uncertainty changes. `browser/common/engine.js` computes the Minkowski sum of each obstacle with a circle of radius = robot_radius + 3σ_position. Watch the obstacle boundaries expand and contract as uncertainty changes — and watch the planner reroute when a previously-feasible corridor becomes occupied by the expanded obstacle boundary. The visualization renders both the geometric boundary (static) and the configuration space boundary (dynamic) simultaneously.
+`browser/chapter41/index.html` runs `rA = new Body('ignore', ...)` driving straight toward the goal with PID (`pidBx`, `pidBy`), and `rB = new Body('avoid', ...)` adding an inline `repulsionForce(body)` that computes `mag = (safe - dist) / safe * 15` for each obstacle in `OBS`. A `collides(body)` check signals when `rA` crashes; the `avoidKp` slider tunes `rB`'s goal-seeking strength. Both controllers are inline in the HTML; `browser/common/engine.js` provides `Body`, `PID`, and `drawBody`.
 
 ## When It Breaks
 

@@ -12,7 +12,7 @@
 </head>
 <body>
 <h1>Chapter 34: Why Robots Get Lost</h1>
-<p class="key">Blind odometry diverges from truth. Landmark corrections keep the estimate on track.</p>
+<p class="key">Monte Carlo Localization: ~200 particles predict, weight by landmark likelihood, resample — the cloud converges as distinctive sensor data arrives.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,74 +20,268 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-let driftRate = 0.04, lmNoise = 2.0;
-let trueX, blindX, corrX, t;
-const LANDMARKS = [80, 180, 270];
+// ── World definition ──────────────────────────────────────────────────────
+// 1D corridor, length CORRIDOR_LEN units. "Doors" are landmarks with known positions.
+const CORRIDOR_LEN = 300;           // world units
+const LANDMARKS = [55, 130, 210, 270];  // door positions (x in world units)
+const SENSOR_RANGE = 30;            // robot can see doors within this distance
+
+// Parameters
+let N_PARTICLES = 200;
+let motionNoise = 3.0;   // std dev of motion noise (world units)
+let sensorNoise = 5.0;   // std dev of sensor noise (world units)
+let speedScale = 1.0;
+
+// ── State ─────────────────────────────────────────────────────────────────
+let trueX, odomX, mclX;
+let particles, weights;   // particles[i] = x position; weights[i] = weight
+let t = 0;
 
 function initState() {
-  t = 0; trueX = 20; blindX = 20; corrX = 20;
+  trueX = 10; odomX = 10; mclX = 0; t = 0;
+  // Initialise particles uniformly over corridor
+  particles = Array.from({ length: N_PARTICLES }, () => Math.random() * CORRIDOR_LEN);
+  weights = new Array(N_PARTICLES).fill(1 / N_PARTICLES);
+  if (plot) plot.clear();
 }
-initState();
 
+// ── MCL three-step loop ───────────────────────────────────────────────────
+
+// Step 1: predict — move each particle by commanded motion + gaussian noise
+function mclPredict(motion) {
+  for (let i = 0; i < particles.length; i++) {
+    particles[i] += motion + gaussianRandom(motionNoise);
+    // Wrap to corridor
+    if (particles[i] < 0) particles[i] = 0;
+    if (particles[i] > CORRIDOR_LEN) particles[i] = CORRIDOR_LEN;
+  }
+}
+
+// Step 2: weight — score each particle by measurement likelihood
+// Measurement: for each visible landmark, robot gets a noisy range reading.
+// Likelihood: product of gaussians for each visible door.
+function gaussianLikelihood(diff, sigma) {
+  return Math.exp(-0.5 * (diff / sigma) ** 2) / (sigma * Math.sqrt(2 * Math.PI)) + 1e-6;
+}
+
+function mclWeight(trueX) {
+  // Collect measurements from true position
+  const measurements = [];
+  for (const lx of LANDMARKS) {
+    const dist = lx - trueX;
+    if (Math.abs(dist) <= SENSOR_RANGE) {
+      measurements.push({ lx, meas: dist + gaussianRandom(sensorNoise) });
+    }
+  }
+
+  if (measurements.length === 0) {
+    // No landmark in range: uniform weights
+    weights.fill(1 / particles.length);
+    return;
+  }
+
+  let sum = 0;
+  for (let i = 0; i < particles.length; i++) {
+    let w = 1;
+    for (const { lx, meas } of measurements) {
+      const predDist = lx - particles[i];
+      w *= gaussianLikelihood(meas - predDist, sensorNoise);
+    }
+    weights[i] = w;
+    sum += w;
+  }
+  // Normalise
+  for (let i = 0; i < particles.length; i++) weights[i] /= sum;
+}
+
+// Step 3: systematic resample
+function mclResample() {
+  const n = particles.length;
+  const newParticles = new Array(n);
+  const step = 1 / n;
+  const start = Math.random() * step;
+  let cumulative = weights[0];
+  let j = 0;
+  for (let i = 0; i < n; i++) {
+    const threshold = start + i * step;
+    while (threshold > cumulative && j < n - 1) {
+      j++;
+      cumulative += weights[j];
+    }
+    newParticles[i] = particles[j];
+  }
+  particles = newParticles;
+  weights.fill(1 / n);
+}
+
+// Weighted mean of particles
+function mclEstimate() {
+  let sum = 0;
+  for (let i = 0; i < particles.length; i++) sum += particles[i] * weights[i];
+  return sum;
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Odometry drift', 0.01, 0.15, 0.01, driftRate, v => { driftRate = v; });
-UI.slider(cp, 'Landmark noise', 0.5, 6, 0.5, lmNoise, v => { lmNoise = v; });
-const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+UI.slider(cp, 'Particles N', 50, 400, 10, N_PARTICLES, v => {
+  N_PARTICLES = Math.round(v);
+  initState();
+});
+UI.slider(cp, 'Motion noise', 0.5, 10, 0.5, motionNoise, v => { motionNoise = v; });
+UI.slider(cp, 'Sensor noise', 1, 15, 1, sensorNoise, v => { sensorNoise = v; });
+UI.slider(cp, 'Speed', 0.3, 2, 0.1, speedScale, v => { speedScale = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); });
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Blind odometry (lost)', 'Landmark-corrected', 280, 200);
+// ── Side-by-side canvases ─────────────────────────────────────────────────
+// Left: dead-reckoning (odometry only) + true pos
+// Right: MCL particle cloud + MCL estimate
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Dead-reckoning only', 'MCL particle filter', 300, 220);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
+// ── Strip plot: error comparison ──────────────────────────────────────────
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 580, height: 110, window: 300,
+  width: 580, height: 120, window: 300,
   colors: ['#e53935', '#1976d2'],
-  labels: ['blind error', 'corrected error'],
-  title: 'Localization error vs truth'
+  labels: ['dead-reck err', 'MCL err'],
+  title: 'Localization error vs ground truth'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['True X', 'Blind X', 'Corr X', 'Blind err']);
+  ['True X', 'Odom X', 'MCL X', 'Odom err', 'MCL err', 'Visible LMs']);
 
-function drawSide(cv, cx, pos, color, label) {
-  cx.clearRect(0, 0, cv.width, cv.height);
-  cx.fillStyle = '#eee'; cx.fillRect(0, 85, cv.width, 30);
-  // landmarks
+// ── Drawing helpers ───────────────────────────────────────────────────────
+const CW = 300, CH = 220;
+const MARGIN = 20, TRACK_Y = 120, TRACK_H = 30;
+
+// Map world x → canvas x
+function wx(x) { return MARGIN + (x / CORRIDOR_LEN) * (CW - 2 * MARGIN); }
+
+function drawCorridor(cx) {
+  // Floor
+  cx.fillStyle = '#e0e0e0'; cx.fillRect(MARGIN, TRACK_Y, CW - 2 * MARGIN, TRACK_H);
+  // Walls
+  cx.strokeStyle = '#999'; cx.lineWidth = 2;
+  cx.strokeRect(MARGIN, TRACK_Y, CW - 2 * MARGIN, TRACK_H);
+  // Landmarks (doors)
   for (const lx of LANDMARKS) {
+    const sx = wx(lx);
     cx.fillStyle = '#ff9800';
-    cx.fillRect((lx % cv.width) - 3, 80, 6, 40);
+    cx.fillRect(sx - 4, TRACK_Y - 10, 8, TRACK_H + 10);
+    cx.fillStyle = '#e65100'; cx.font = '9px sans-serif'; cx.textAlign = 'center';
+    cx.fillText('D', sx, TRACK_Y - 12);
   }
-  drawPoint(cx, trueX % cv.width, 100, '#4caf50', 7);
-  drawPoint(cx, pos % cv.width, 100, color, 5);
-  cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
-  cx.fillText(label, 4, 15);
-  cx.fillText('err=' + (pos - trueX).toFixed(1), 4, 28);
 }
 
+function drawDeadReckoning(cv, cx) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  cx.fillStyle = '#fafafa'; cx.fillRect(0, 0, cv.width, cv.height);
+
+  drawCorridor(cx);
+
+  // True pos (green)
+  const tx = wx(trueX);
+  cx.fillStyle = '#4caf50';
+  cx.beginPath(); cx.arc(tx, TRACK_Y + TRACK_H / 2, 9, 0, Math.PI * 2); cx.fill();
+
+  // Odometry estimate (red)
+  const ox = wx(Math.min(CORRIDOR_LEN, Math.max(0, odomX)));
+  cx.fillStyle = '#e53935';
+  cx.beginPath(); cx.arc(ox, TRACK_Y + TRACK_H / 2, 7, 0, Math.PI * 2); cx.fill();
+
+  // Legend
+  cx.font = '10px sans-serif'; cx.textAlign = 'left';
+  cx.fillStyle = '#4caf50'; cx.fillText('● True', 4, 16);
+  cx.fillStyle = '#e53935'; cx.fillText('● Odometry', 4, 30);
+  cx.fillStyle = '#555';
+  const err = (odomX - trueX).toFixed(1);
+  cx.fillText('error: ' + err, 4, 44);
+}
+
+function drawMCL(cv, cx) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  cx.fillStyle = '#fafafa'; cx.fillRect(0, 0, cv.width, cv.height);
+
+  drawCorridor(cx);
+
+  // Draw particles as dots above the corridor, size proportional to weight
+  const maxW = Math.max(...weights);
+  for (let i = 0; i < particles.length; i++) {
+    const px = wx(particles[i]);
+    const norm = weights[i] / maxW;
+    const r = 1.5 + norm * 5;
+    cx.globalAlpha = 0.3 + norm * 0.7;
+    cx.fillStyle = '#1976d2';
+    cx.beginPath(); cx.arc(px, TRACK_Y - 18 + norm * 8, r, 0, Math.PI * 2); cx.fill();
+  }
+  cx.globalAlpha = 1;
+
+  // MCL estimate (blue triangle)
+  const ex = wx(Math.min(CORRIDOR_LEN, Math.max(0, mclX)));
+  cx.fillStyle = '#1976d2';
+  cx.beginPath();
+  cx.moveTo(ex, TRACK_Y - 5);
+  cx.lineTo(ex - 7, TRACK_Y + TRACK_H / 2 + 5);
+  cx.lineTo(ex + 7, TRACK_Y + TRACK_H / 2 + 5);
+  cx.closePath(); cx.fill();
+
+  // True pos (green)
+  const tx = wx(trueX);
+  cx.fillStyle = '#4caf50';
+  cx.beginPath(); cx.arc(tx, TRACK_Y + TRACK_H / 2, 9, 0, Math.PI * 2); cx.fill();
+
+  // Legend
+  cx.font = '10px sans-serif'; cx.textAlign = 'left';
+  cx.fillStyle = '#4caf50'; cx.fillText('● True', 4, 16);
+  cx.fillStyle = '#1976d2'; cx.fillText('▲ MCL est', 4, 30);
+  cx.fillStyle = '#555'; cx.fillText('· particles', 4, 44);
+  const err = (mclX - trueX).toFixed(1);
+  cx.fillText('error: ' + err, 4, 58);
+}
+
+// ── Simulation step ───────────────────────────────────────────────────────
+let visibleLMs = 0;
+
+function simStep() {
+  t++;
+  const motion = speedScale * 1.2;
+
+  // Ground truth
+  trueX += motion;
+  if (trueX > CORRIDOR_LEN - 5) { trueX = 10; odomX = 10; initState(); return; }
+
+  // Dead reckoning (noisy odometry)
+  odomX += motion + gaussianRandom(0.8);
+
+  // MCL three steps
+  mclPredict(motion);
+  mclWeight(trueX);
+  mclResample();
+  mclX = mclEstimate();
+
+  // Count visible landmarks
+  visibleLMs = LANDMARKS.filter(lx => Math.abs(lx - trueX) <= SENSOR_RANGE).length;
+}
+
+// ── Main loop ─────────────────────────────────────────────────────────────
 function draw() {
   if (!state.paused) {
-    t++;
-    const step = 1.0;
-    trueX += step;
-    blindX += addNoise(step, driftRate * step);
-    corrX += addNoise(step, driftRate * step);
-
-    // correct when near a landmark
-    for (const lx of LANDMARKS) {
-      if (Math.abs(trueX - lx) < 2) {
-        const meas = addNoise(lx, lmNoise);
-        corrX = meas;
-      }
-    }
-    if (trueX > 400) { trueX = 20; blindX = 20; corrX = 20; }
-
-    plot.push(0, blindX - trueX);
-    plot.push(1, corrX - trueX);
-    met.update([trueX.toFixed(1), blindX.toFixed(1), corrX.toFixed(1), (blindX - trueX).toFixed(2)]);
+    simStep();
+    plot.push(0, Math.abs(odomX - trueX));
+    plot.push(1, Math.abs(mclX - trueX));
+    met.update([
+      trueX.toFixed(1), odomX.toFixed(1), mclX.toFixed(1),
+      Math.abs(odomX - trueX).toFixed(1),
+      Math.abs(mclX - trueX).toFixed(1),
+      visibleLMs
+    ]);
   }
-  drawSide(canvasA, ctxA, blindX, '#e53935', 'Blind odometry');
-  drawSide(canvasB, ctxB, corrX, '#1976d2', 'Landmark-corrected');
+  drawDeadReckoning(canvasA, ctxA);
+  drawMCL(canvasB, ctxB);
   requestAnimationFrame(draw);
 }
+
+initState();
 draw();
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>

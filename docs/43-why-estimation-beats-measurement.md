@@ -71,7 +71,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/chapter43/index.html` runs GPS + IMU fusion with a discrete Kalman filter, showing the raw GPS readings, the IMU dead-reckoning position, and the fused estimate simultaneously. `browser/common/engine.js` implements the standard predict-update cycle as in chapter 25, extended to 2D position + velocity state. The uncertainty ellipse (1σ covariance) is rendered around the estimate — watch it shrink on GPS update and grow during GPS outage. The position controller uses the filtered state, not raw GPS, and the reduction in control chattering is visible.
+`browser/common/engine.js` provides `Kalman1D` and `addNoise`. `browser/chapter43/index.html` creates `kf = new Kalman1D(procNoise, measNoise * measNoise)`, calls `kf.predict(1, VEL)` each tick and `kf.update(lastMeas)` on each noisy reading, then reads `kf.x` as the estimate. The sim simplifies to 1D position tracking — enough to show how estimation beats raw measurement: the strip plot comparing raw measurement, Kalman estimate, and truth makes the noise reduction concrete. Covariance `kf.p` is tracked internally but not rendered.
 
 ## When It Breaks
 

@@ -69,7 +69,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-The simulation runs on `browser/common/engine.js`, which provides `Vec`, `Body`, and `World` primitives. `browser/chapter01/index.html` exercises the friction contact model: the engine computes the tangential impulse at the contact point each timestep and clamps it to μ·N, switching between static and kinetic modes when slip begins.
+`browser/common/engine.js` provides `Body` (pos, vel, `addForce`, `step`) and `Vec`. The chapter sim lives in `browser/chapter01/index.html`: each frame it calls `wheel.addForce(new Vec(force, 0))` for the drive force and `wheel.addForce(wheel.vel.mul(-friction))` for linear drag, then `wheel.step(0.016)`. This simplifies the contact model to a viscous drag term rather than a full static/kinetic friction switch — enough to show how force and resistance together determine steady-state speed.
 
 ## When It Breaks
 

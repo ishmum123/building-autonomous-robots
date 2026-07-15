@@ -79,7 +79,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` implements noise-weighted fusion for position as: fused = Σ(w_i × reading_i) / Σ(w_i), where w_i = 1/σ_i² and σ_i is computed dynamically based on sensor model and time since last valid reading. `browser/chapter24/index.html` shows each sensor's contribution weight as a stacked bar chart evolving in real time, plus the fused estimate versus each individual sensor.
+`browser/chapter24/index.html` fuses IMU and GPS using a weighted blend: `fusedEst = fusedEst * (1 - fusionW) + gpsMeas * fusionW`, where `fusionW` is a slider and GPS updates arrive at `GPS_RATE = 30` ticks. The sim simplifies noise-weighted fusion to a single tunable blend weight — enough to show that leaning toward the lower-noise sensor reduces overall error. A strip plot compares absolute errors for IMU, GPS, and fused estimates; `browser/common/engine.js` supplies `addNoise` for both sensor models.
 
 ## When It Breaks
 

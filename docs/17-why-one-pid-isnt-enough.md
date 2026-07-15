@@ -73,7 +73,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` runs two separate PID instances at configurable update rates. The inner-loop PID consumes angle setpoint and outputs motor differential; the outer-loop PID consumes position error and outputs angle setpoint. `browser/chapter17/index.html` displays both loops' signals simultaneously and allows switching between single-loop and cascade modes.
+`browser/common/engine.js` provides `Body`, `PID`, and `Vec`. `browser/chapter17/index.html` creates three `PID` instances (`pidSingle`, `pidAlt`, `pidLat`) and two `Body` instances (`droneA`, `droneB`). The cascade wiring is inline: `stepDroneB` computes `fY = -pidAlt.update(d.pos.y, 0.016)` and `fX = pidLat.update(d.pos.x, 0.016)` independently, then applies them as separate force components. The side-by-side layout shows why a single `pidSingle` on x-position fails to control altitude while the two-controller cascade reaches the target.
 
 ## When It Breaks
 

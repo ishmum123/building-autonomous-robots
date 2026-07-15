@@ -84,7 +84,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` maintains an `integral_state` variable in the controller alongside the current error. Each timestep: `integral_state += error × dt`; output = `K_p × error + K_i × integral_state`. `browser/chapter15/index.html` plots both terms separately so you can watch the integral charge up against the disturbance and stabilize.
+`browser/common/engine.js` is not involved in the control logic here; this sim uses plain scalar state variables. `browser/chapter15/index.html` maintains `trueX`, `estXNone`, and `estXCorr` as scalars, integrating `(trueVel + velBias) * 0.016 * 10` each frame for the biased estimate, and applying a proportional correction `correctionGain * (trueX - estXCorr)` every 60 frames to mimic a GPS fix. The strip plot overlays all three traces to make accumulating drift visible against the periodic correction.
 
 ## When It Breaks
 

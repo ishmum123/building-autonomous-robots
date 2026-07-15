@@ -77,7 +77,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` models motor dynamics as a first-order electrical system: V_supply − kω − IR = L·dI/dt, with mechanical dynamics τ_motor − τ_friction − τ_load = I·dω/dt. `browser/chapter07/index.html` plots the torque-speed curve and shows where the operating point settles for a given load, exercising the coupled electrical-mechanical state variables in the engine.
+`browser/common/engine.js` provides only drawing helpers here; all motor dynamics are inline in `browser/chapter07/index.html`. Each frame: `backEmf = 0.8 * speed`, `current = (voltage - backEmf) / 1.0`, `torque = 0.1 * current`, `speed += (torque - friction * speed) * 0.016`. The sim omits inductance (no L·dI/dt) — the simplification is enough to show how rising back-EMF reduces current and self-limits speed to approximately `voltage / 0.8` rad/s.
 
 ## When It Breaks
 

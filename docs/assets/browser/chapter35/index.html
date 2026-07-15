@@ -12,7 +12,7 @@
 </head>
 <body>
 <h1>Chapter 35: Why SLAM Exists</h1>
-<p class="key">Localization-only fails if the map is wrong. SLAM refines both map and pose jointly.</p>
+<p class="key">Pose-graph SLAM: robot drives a 2D loop accumulating odometry drift. On loop closure a gradient-descent optimizer distributes the correction across all nodes — drifted trajectory snaps back to ground truth.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,101 +20,316 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-// True landmark positions
-const TRUE_LM = [60, 140, 220];
-let sensorNoise = 4, motionNoise = 0.05;
-let trueX, locX, slamX, slamLM, t;
+// ── Pose-graph SLAM (2D translation + heading) ────────────────────────────
+//
+// Ground truth: robot drives a rectangular loop.
+// Odometry: each step is corrupted by translational noise → drift accumulates.
+// Pose graph: nodes = robot poses {x, y, θ}; edges = odometry constraints.
+// Loop closure: when robot returns near start, add a closure edge.
+// Optimization: gradient descent minimising total edge residual.
+// Side-by-side: drifted (odometry) trajectory vs SLAM-optimized trajectory,
+//               both against ground truth.
+
+// ── World / loop shape ────────────────────────────────────────────────────
+// Square loop in a 200×200 world, driven at fixed speed.
+const LOOP_SIDES = [[1,0],[0,1],[-1,0],[0,-1]];  // unit directions
+const SIDE_STEPS = 25;   // nodes per side
+const STEP_DIST = 7;     // distance per odometry step (world units)
+
+// ── Parameters ───────────────────────────────────────────────────────────
+let odomNoise = 0.6;     // std-dev of translational noise per step
+let angleNoise = 0.015;  // std-dev of heading noise per step (rad)
+let optIters = 30;       // gradient-descent iterations at loop closure
+
+// ── State ─────────────────────────────────────────────────────────────────
+// nodes: array of {x,y,theta}  (dead-reckoned poses)
+// edges: array of {i,j, dx,dy,dtheta} (odometry constraints)
+// groundTruth: matching array of true {x,y,theta}
+let nodes, edges, groundTruth;
+let odomNodes;           // same array as nodes for the drifted path
+let slamNodes;           // copy after optimization
+let driving;             // true while driving
+let loopClosed;
+let closureFrame;        // frame index when closure happened
+let truePos, odomPos;    // current live poses
+
+// Node index driving cursor
+let nodeIdx;
+// Total frames for playback
+let totalNodes;
 
 function initState() {
-  t = 0; trueX = 10; locX = 10; slamX = 10;
-  // localization uses a WRONG map (offsets by +15)
-  // SLAM builds its own map estimate
-  slamLM = TRUE_LM.map(l => l + 15); // start with same wrong guess
-}
-initState();
+  nodes = [];
+  odomNodes = [];
+  slamNodes = null;
+  groundTruth = [];
+  edges = [];
+  loopClosed = false;
+  closureFrame = -1;
+  driving = true;
+  nodeIdx = 0;
 
+  // Starting pose
+  truePos = { x: 60, y: 60, theta: 0 };
+  odomPos = { x: 60, y: 60, theta: 0 };
+
+  // Push start node
+  groundTruth.push({ ...truePos });
+  nodes.push({ ...odomPos });
+
+  if (plot) plot.clear();
+}
+
+// ── Build ground-truth route (pre-computed) ───────────────────────────────
+function buildRoute() {
+  // Already initialized starting node; add waypoints for full square loop
+  const route = [];
+  for (const [dx, dy] of LOOP_SIDES) {
+    for (let s = 0; s < SIDE_STEPS; s++) {
+      route.push({ dx, dy });
+    }
+  }
+  return route;
+}
+
+let route = [];
+
+function addNode() {
+  if (nodeIdx >= route.length) {
+    // Loop complete — check for closure
+    if (!loopClosed) {
+      attemptLoopClosure();
+    }
+    driving = false;
+    return;
+  }
+
+  const { dx, dy } = route[nodeIdx];
+
+  // Ground truth step
+  const prevTrue = groundTruth[groundTruth.length - 1];
+  const newTrue = {
+    x: prevTrue.x + dx * STEP_DIST,
+    y: prevTrue.y + dy * STEP_DIST,
+    theta: Math.atan2(dy, dx)
+  };
+  groundTruth.push(newTrue);
+
+  // Odometry step (with noise)
+  const prevOdom = nodes[nodes.length - 1];
+  const noiseTrans = gaussianRandom(odomNoise);
+  const noiseAngle = gaussianRandom(angleNoise);
+  const thetaOdom = prevOdom.theta + noiseAngle;
+  // Direction is nominally correct, but length has noise and heading drifts
+  const trueDx = dx * STEP_DIST + noiseTrans * dx;
+  const trueDy = dy * STEP_DIST + noiseTrans * dy;
+  const newOdom = {
+    x: prevOdom.x + trueDx,
+    y: prevOdom.y + trueDy,
+    theta: thetaOdom
+  };
+  nodes.push(newOdom);
+
+  // Odometry edge: constraint from prevOdom to newOdom
+  edges.push({
+    i: nodes.length - 2,
+    j: nodes.length - 1,
+    dx: dx * STEP_DIST,  // ideal (commanded) displacement
+    dy: dy * STEP_DIST,
+    dtheta: 0
+  });
+
+  nodeIdx++;
+}
+
+// ── Loop closure ──────────────────────────────────────────────────────────
+function attemptLoopClosure() {
+  // Add a closure edge between last node and first node
+  // The measurement is: "you are back at start" → constraint delta = 0 for both
+  const first = nodes[0];
+  const last = nodes[nodes.length - 1];
+  // Loop closure edge: i=last, j=0, ideal displacement = (first - last)
+  // i.e., the robot observes it should be at the start position
+  edges.push({
+    i: nodes.length - 1,
+    j: 0,
+    dx: first.x - last.x,  // observed relative displacement (includes error)
+    dy: first.y - last.y,
+    dtheta: 0,
+    isLoop: true
+  });
+  loopClosed = true;
+  closureFrame = nodes.length - 1;
+
+  // Deep-copy nodes before optimization
+  slamNodes = nodes.map(n => ({ ...n }));
+  optimizePoseGraph(slamNodes, edges, optIters);
+}
+
+// ── Gradient descent pose-graph optimization ──────────────────────────────
+// Minimize sum of squared edge residuals.
+// For each edge (i,j) with constraint (dx,dy,dtheta):
+//   residual_x = (nodes[j].x - nodes[i].x) - dx
+//   residual_y = (nodes[j].y - nodes[i].y) - dy
+// Fix node 0 (anchor). Gradient descent step for each free node.
+
+function optimizePoseGraph(ns, es, iters) {
+  const LR = 0.18;   // learning rate
+  const n = ns.length;
+
+  for (let iter = 0; iter < iters; iter++) {
+    const gradX = new Float64Array(n);
+    const gradY = new Float64Array(n);
+
+    for (const e of es) {
+      const { i, j, dx, dy } = e;
+      const resX = (ns[j].x - ns[i].x) - dx;
+      const resY = (ns[j].y - ns[i].y) - dy;
+      // Gradient w.r.t. ns[j]: +residual; w.r.t. ns[i]: -residual
+      gradX[j] += resX;
+      gradY[j] += resY;
+      gradX[i] -= resX;
+      gradY[i] -= resY;
+    }
+
+    // Update all nodes except anchor (node 0)
+    for (let k = 1; k < n; k++) {
+      ns[k].x -= LR * gradX[k];
+      ns[k].y -= LR * gradY[k];
+    }
+  }
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Sensor noise', 1, 10, 1, sensorNoise, v => { sensorNoise = v; });
-UI.slider(cp, 'Motion noise', 0.01, 0.2, 0.01, motionNoise, v => { motionNoise = v; });
-const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+UI.slider(cp, 'Odom noise', 0.1, 2, 0.1, odomNoise, v => { odomNoise = v; initState(); route = buildRoute(); });
+UI.slider(cp, 'Angle noise', 0, 0.05, 0.005, angleNoise, v => { angleNoise = v; initState(); route = buildRoute(); });
+UI.slider(cp, 'Opt iters', 5, 60, 5, optIters, v => { optIters = Math.round(v); });
+const { state } = UI.pauseResetBar(cp, () => { initState(); route = buildRoute(); });
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Localization (wrong map)', 'SLAM (joint estimate)', 280, 220);
+// ── Side-by-side canvases ─────────────────────────────────────────────────
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Drifted (odometry)', 'SLAM optimized', 300, 260);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
+// ── Strip plot ─────────────────────────────────────────────────────────────
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 580, height: 110, window: 300,
+  width: 580, height: 120, window: 200,
   colors: ['#e53935', '#1976d2'],
-  labels: ['loc error', 'SLAM error'],
-  title: 'Pose error (localization vs SLAM)'
+  labels: ['odom end-err', 'SLAM end-err'],
+  title: 'End-node position error vs ground truth (world units)'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['True X', 'Loc X', 'SLAM X', 'SLAM err']);
+  ['Nodes', 'Loop closed', 'Odom end-err', 'SLAM end-err', 'Opt iters']);
 
-const WRONG_LM = TRUE_LM.map(l => l + 15);
+// ── Drawing ───────────────────────────────────────────────────────────────
+const CW = 300, CH = 260;
+// Scale world coords → canvas coords
+// World rect: starts at ~(60,60), loop is ~SIDE_STEPS*STEP_DIST = 175 units wide
+const WORLD_SCALE = 1.1;
+const WORLD_OX = 20, WORLD_OY = 20;
 
-function drawSide(cv, cx, robotX, lmPos, color, label) {
-  cx.clearRect(0, 0, cv.width, cv.height);
-  cx.fillStyle = '#eee'; cx.fillRect(0, 95, cv.width, 30);
-  // draw landmark estimates
-  for (const lx of lmPos) {
-    cx.fillStyle = '#ff9800';
-    const sx = Math.max(3, Math.min(cv.width-3, lx));
-    cx.fillRect(sx - 3, 90, 6, 40);
+function wx(x) { return WORLD_OX + x * WORLD_SCALE; }
+function wy(y) { return WORLD_OY + y * WORLD_SCALE; }
+
+function drawPath(cx, pathNodes, color, lineWidth) {
+  if (!pathNodes || pathNodes.length < 2) return;
+  cx.strokeStyle = color; cx.lineWidth = lineWidth;
+  cx.beginPath();
+  cx.moveTo(wx(pathNodes[0].x), wy(pathNodes[0].y));
+  for (let i = 1; i < pathNodes.length; i++) {
+    cx.lineTo(wx(pathNodes[i].x), wy(pathNodes[i].y));
   }
-  // true landmarks (faint)
-  for (const lx of TRUE_LM) {
-    cx.fillStyle = 'rgba(76,175,80,0.4)';
-    cx.fillRect(Math.max(3, Math.min(cv.width-3, lx)) - 2, 90, 4, 40);
+  cx.stroke();
+
+  // Draw node dots
+  cx.fillStyle = color;
+  for (const n of pathNodes) {
+    cx.beginPath();
+    cx.arc(wx(n.x), wy(n.y), 2.5, 0, Math.PI * 2);
+    cx.fill();
   }
-  drawPoint(cx, trueX % (cv.width-5) + 2, 110, '#4caf50', 7);
-  drawPoint(cx, Math.max(5, Math.min(cv.width-5, robotX)), 110, color, 5);
-  cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
-  cx.fillText(label, 4, 15);
-  cx.fillText('err=' + (robotX - trueX).toFixed(1), 4, 28);
-  cx.fillStyle = '#999'; cx.fillText('orange=believed LM, green=true LM', 4, cv.height - 5);
 }
+
+function drawCanvas(cv, cx, pathNodes, label) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  cx.fillStyle = '#fafafa'; cx.fillRect(0, 0, cv.width, cv.height);
+
+  // Ground truth (faint green)
+  drawPath(cx, groundTruth, 'rgba(76,175,80,0.35)', 1.5);
+
+  // Main path
+  drawPath(cx, pathNodes, label === 'drifted' ? '#e53935' : '#1976d2', 2);
+
+  // Mark start
+  if (groundTruth.length > 0) {
+    const s = groundTruth[0];
+    cx.fillStyle = '#4caf50';
+    cx.beginPath(); cx.arc(wx(s.x), wy(s.y), 6, 0, Math.PI * 2); cx.fill();
+  }
+
+  // Mark loop closure point
+  if (loopClosed && pathNodes.length > 0) {
+    const last = pathNodes[pathNodes.length - 1];
+    cx.fillStyle = '#ff9800';
+    cx.beginPath(); cx.arc(wx(last.x), wy(last.y), 5, 0, Math.PI * 2); cx.fill();
+  }
+
+  // Legend text
+  cx.font = '9px sans-serif'; cx.textAlign = 'left';
+  cx.fillStyle = 'rgba(76,175,80,0.8)'; cx.fillText('— ground truth', 4, 12);
+  cx.fillStyle = label === 'drifted' ? '#e53935' : '#1976d2';
+  cx.fillText('— ' + label, 4, 24);
+  if (loopClosed) {
+    cx.fillStyle = '#ff9800'; cx.fillText('● loop closure', 4, 36);
+  }
+}
+
+// ── Compute errors ────────────────────────────────────────────────────────
+function endError(pathNodes) {
+  if (!pathNodes || pathNodes.length < 2 || groundTruth.length < pathNodes.length) return 0;
+  const n = pathNodes.length - 1;
+  const gt = groundTruth[n];
+  const p = pathNodes[n];
+  return Math.hypot(p.x - gt.x, p.y - gt.y);
+}
+
+// ── Main loop ─────────────────────────────────────────────────────────────
+let frameCount = 0;
+const STEP_EVERY = 3; // add a node every N frames
 
 function draw() {
   if (!state.paused) {
-    t++;
-    const step = 1.0;
-    trueX += step;
-
-    // localization: noisy motion + correct to wrong map
-    locX += addNoise(step, motionNoise * step);
-    for (let i = 0; i < TRUE_LM.length; i++) {
-      const trueDist = TRUE_LM[i] - trueX;
-      if (Math.abs(trueDist) < 5) {
-        const meas = addNoise(trueDist, sensorNoise);
-        locX = WRONG_LM[i] - meas; // forced to wrong map
-      }
+    frameCount++;
+    if (driving && frameCount % STEP_EVERY === 0) {
+      addNode();
     }
 
-    // SLAM: noisy motion + EKF-lite update of both pose and map
-    slamX += addNoise(step, motionNoise * step);
-    for (let i = 0; i < TRUE_LM.length; i++) {
-      const trueDist = TRUE_LM[i] - trueX;
-      if (Math.abs(trueDist) < 5) {
-        const meas = addNoise(trueDist, sensorNoise);
-        // split correction 50/50 between pose and map
-        const predDist = slamLM[i] - slamX;
-        const err = meas - predDist;
-        slamX -= err * 0.4;
-        slamLM[i] += err * 0.4;
-      }
-    }
-    if (trueX > 260) { trueX = 10; locX = 10; slamX = 10; slamLM = TRUE_LM.map(l => l + 15); }
+    const odomErr = endError(nodes);
+    const slamErr = loopClosed ? endError(slamNodes) : 0;
 
-    plot.push(0, locX - trueX);
-    plot.push(1, slamX - trueX);
-    met.update([trueX.toFixed(1), locX.toFixed(1), slamX.toFixed(1), (slamX - trueX).toFixed(2)]);
+    if (loopClosed) {
+      plot.push(0, odomErr);
+      plot.push(1, slamErr);
+    }
+
+    met.update([
+      nodes.length,
+      loopClosed ? 'YES' : 'no',
+      odomErr.toFixed(1),
+      loopClosed ? slamErr.toFixed(1) : '—',
+      optIters
+    ]);
   }
-  drawSide(canvasA, ctxA, locX, WRONG_LM, '#e53935', 'Localization only');
-  drawSide(canvasB, ctxB, slamX, slamLM, '#1976d2', 'SLAM');
+
+  drawCanvas(canvasA, ctxA, nodes, 'drifted');
+  drawCanvas(canvasB, ctxB, loopClosed ? slamNodes : nodes, loopClosed ? 'SLAM opt' : 'driving...');
   requestAnimationFrame(draw);
 }
+
+initState();
+route = buildRoute();
 draw();
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>

@@ -12,7 +12,7 @@
 </head>
 <body>
 <h1>Chapter 16: Why PID Was Invented</h1>
-<p class="key">P-only leaves steady-state offset. I eliminates it but can overshoot. D damps oscillation. Full PID combines all three.</p>
+<p class="key">Oven temperature control at 200°C. P-only leaves a steady-state offset; I eliminates it but causes windup; D damps overshoot. Full PID + integral clamp handles everything.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,71 +20,201 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-const TARGET = 220;
-let kp = 2.0, ki = 0.3, kd = 0.8;
+// ── Plant: first-order thermal model ─────────────────────────────────────────
+// dT/dt = heatGain * u(t) - ambientLoss * (T - T_ambient)
+// u(t) is heater power in [0, 1]. Temperature in °C.
+const SETPOINT = 200;        // °C
+const T_AMBIENT = 20;        // °C
+const HEAT_GAIN = 80;        // °C/s at full power
+const AMBIENT_LOSS = 0.5;    // loss coefficient
+const DT = 0.05;             // sim step (s) per frame tick
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'P-only (offset remains)', 'Full PID (no offset)', 280, 200);
-const { canvasA, ctxA, canvasB, ctxB } = ab;
+// PID gains
+let kp = 0.8, ki = 0.15, kd = 1.2;
 
-let plantP, plantPID, pidP, pidFull;
+// Per-term enable flags
+let useP = true, useI = true, useD = true;
+// Integral clamp toggle
+let clampEnabled = true;
+const I_CLAMP = 50;  // max integral accumulator magnitude
+
+// State for two independent plants: P-only and full PID
+let tempP, tempFull;
+let intP, intFull, lastErrP, lastErrFull;
+
 function initState() {
-  plantP   = new Body('P',   30, 100, { mass: 1, radius: 12, color: '#ff9800' });
-  plantPID = new Body('PID', 30, 100, { mass: 1, radius: 12, color: '#1976d2' });
-  pidP    = new PID(kp, 0,  0,   TARGET);
-  pidFull = new PID(kp, ki, kd, TARGET);
+  tempP = T_AMBIENT; tempFull = T_AMBIENT;
+  intP = 0; intFull = 0;
+  lastErrP = SETPOINT - T_AMBIENT; lastErrFull = SETPOINT - T_AMBIENT;
+  if (plot) plot.clear();
 }
-initState();
 
+// Thermal plant step: returns new temperature
+function plantStep(temp, u) {
+  const uClamped = Math.max(0, Math.min(1, u));
+  const dT = (HEAT_GAIN * uClamped - AMBIENT_LOSS * (temp - T_AMBIENT)) * DT;
+  return temp + dT;
+}
+
+// PID update with explicit enable flags and optional integral clamp
+// For the P-only plant we pass ki=0, kd=0 always.
+function pidUpdate(err, integral, lastErr, kpV, kiV, kdV) {
+  const p = useP ? kpV * err : 0;
+  const newInt = integral + err * DT;
+  const clampedInt = clampEnabled ? Math.max(-I_CLAMP, Math.min(I_CLAMP, newInt)) : newInt;
+  const i = useI ? kiV * clampedInt : 0;
+  const d = useD ? kdV * (err - lastErr) / DT : 0;
+  // Output is heater fraction [0,1]
+  const output = (p + i + d) / 100;  // scale: gains tuned so 100 = full power
+  return { output, integral: clampedInt };
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────────
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Kp', 0.5, 6, 0.1, kp, v => { kp = v; pidP.kp = v; pidFull.kp = v; });
-UI.slider(cp, 'Ki', 0, 1, 0.05, ki, v => { ki = v; pidFull.ki = v; });
-UI.slider(cp, 'Kd', 0, 3, 0.1, kd, v => { kd = v; pidFull.kd = v; });
-const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+UI.slider(cp, 'Kp', 0.1, 4, 0.1, kp, v => { kp = v; });
+UI.slider(cp, 'Ki', 0, 1, 0.01, ki, v => { ki = v; });
+UI.slider(cp, 'Kd', 0, 4, 0.1, kd, v => { kd = v; });
 
-const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 580, height: 120, window: 400,
+const r1 = UI.row(cp);
+
+// Per-term toggles (buttons)
+function makeToggle(container, label, initial, onToggle) {
+  const btn = UI.button(container, label + ': ON', () => {
+    const newVal = !onToggle.val;
+    onToggle.val = newVal;
+    btn.textContent = label + (newVal ? ': ON' : ': OFF');
+    btn.classList.toggle('active', !newVal);
+    onToggle(newVal);
+  });
+  onToggle.val = initial;
+  btn.classList.toggle('active', !initial);
+  return btn;
+}
+
+const pToggleFn = v => { useP = v; };
+const iToggleFn = v => { useI = v; };
+const dToggleFn = v => { useD = v; };
+pToggleFn.val = true; iToggleFn.val = true; dToggleFn.val = true;
+
+const btnP = UI.button(r1, 'P: ON', () => {
+  useP = !useP; btnP.textContent = 'P: ' + (useP ? 'ON' : 'OFF'); btnP.classList.toggle('active', !useP);
+});
+const btnI = UI.button(r1, 'I: ON', () => {
+  useI = !useI; btnI.textContent = 'I: ' + (useI ? 'ON' : 'OFF'); btnI.classList.toggle('active', !useI);
+});
+const btnD = UI.button(r1, 'D: ON', () => {
+  useD = !useD; btnD.textContent = 'D: ' + (useD ? 'ON' : 'OFF'); btnD.classList.toggle('active', !useD);
+});
+
+const btnClamp = UI.button(r1, 'I-Clamp: ON', () => {
+  clampEnabled = !clampEnabled;
+  btnClamp.textContent = 'I-Clamp: ' + (clampEnabled ? 'ON' : 'OFF');
+  btnClamp.classList.toggle('active', !clampEnabled);
+});
+
+let disturbancePending = false;
+UI.button(r1, 'Inject disturbance (door opens)', () => { disturbancePending = true; });
+
+const { state } = UI.pauseResetBar(cp, () => { initState(); });
+
+// ── Canvas A/B ─────────────────────────────────────────────────────────────
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'P-only (offset remains)', 'Full PID (clamp active)', 280, 200);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
+
+// ── Strip plot ─────────────────────────────────────────────────────────────
+let plot;
+plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 130, window: 400,
   colors: ['#ff9800', '#1976d2', '#4caf50'],
-  labels: ['P-only pos', 'PID pos', 'target'],
-  title: 'Position vs time: P-only vs full PID'
+  labels: ['P-only temp', 'PID temp', 'setpoint 200°C'],
+  title: 'Oven temperature vs time'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['P-only pos', 'P-only err', 'PID pos', 'PID err']);
+  ['P-only °C', 'P-only err', 'PID °C', 'PID err', 'Integral acc']);
 
-function stepPlant(plant, pid) {
-  plant.clearForces();
-  plant.addForce(new Vec(pid.update(plant.pos.x, 0.016), 0));
-  plant.addForce(plant.vel.mul(-1.5));
-  plant.step(0.016);
-  plant.pos.x = Math.max(0, Math.min(270, plant.pos.x));
-}
+// ── Draw one side ──────────────────────────────────────────────────────────
+function drawOven(cv, cx, temp, label) {
+  cx.clearRect(0, 0, cv.width, cv.height);
+  // Background: gradient from cool blue to hot orange based on temperature
+  const fraction = Math.max(0, Math.min(1, (temp - T_AMBIENT) / (SETPOINT * 1.3 - T_AMBIENT)));
+  const r = Math.round(fraction * 255);
+  const b = Math.round((1 - fraction) * 180);
+  cx.fillStyle = `rgb(${r},80,${b})`;
+  cx.fillRect(0, 0, cv.width, cv.height);
 
-function drawPlant(c, cx, plant, label) {
-  cx.clearRect(0, 0, c.width, c.height);
-  cx.strokeStyle = '#4caf50'; cx.setLineDash([4, 4]);
-  cx.beginPath(); cx.moveTo(TARGET, 0); cx.lineTo(TARGET, c.height); cx.stroke();
+  // Oven box
+  cx.strokeStyle = '#ccc'; cx.lineWidth = 3;
+  cx.strokeRect(30, 30, cv.width - 60, cv.height - 60);
+
+  // Temperature bar
+  const barH = cv.height - 80;
+  const filled = barH * Math.max(0, Math.min(1, (temp - T_AMBIENT) / (SETPOINT * 1.3 - T_AMBIENT)));
+  cx.fillStyle = 'rgba(0,0,0,0.3)';
+  cx.fillRect(cv.width - 50, 40, 18, barH);
+  cx.fillStyle = '#ff5722';
+  cx.fillRect(cv.width - 50, 40 + barH - filled, 18, filled);
+
+  // Setpoint line
+  const spFrac = (SETPOINT - T_AMBIENT) / (SETPOINT * 1.3 - T_AMBIENT);
+  const spY = 40 + barH - barH * spFrac;
+  cx.strokeStyle = '#4caf50'; cx.lineWidth = 2; cx.setLineDash([4, 3]);
+  cx.beginPath(); cx.moveTo(cv.width - 55, spY); cx.lineTo(cv.width - 27, spY); cx.stroke();
   cx.setLineDash([]);
-  drawPoint(cx, TARGET, c.height / 2, '#4caf50', 5);
-  drawBody(cx, plant);
-  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
-  cx.fillText(label, 4, 16);
-  cx.fillText('err=' + (plant.pos.x - TARGET).toFixed(1), 4, 30);
+
+  // Temperature text
+  cx.fillStyle = '#fff'; cx.font = 'bold 22px sans-serif'; cx.textAlign = 'center';
+  cx.fillText(temp.toFixed(1) + '°C', cv.width / 2, cv.height / 2 + 8);
+  cx.font = '11px sans-serif';
+  cx.fillText(label, cv.width / 2, 20);
+  const err = temp - SETPOINT;
+  cx.fillStyle = Math.abs(err) < 3 ? '#afffaf' : '#ffcccc';
+  cx.fillText('err=' + err.toFixed(1) + '°C', cv.width / 2, cv.height - 10);
 }
 
+// ── Sim step ──────────────────────────────────────────────────────────────
+function step() {
+  // Disturbance: door opens — temp of both plants drops by 30°C
+  if (disturbancePending) {
+    disturbancePending = false;
+    tempP = Math.max(T_AMBIENT, tempP - 30);
+    tempFull = Math.max(T_AMBIENT, tempFull - 30);
+    // Recalculate last errors so derivative doesn't spike
+    lastErrP = SETPOINT - tempP;
+    lastErrFull = SETPOINT - tempFull;
+  }
+
+  // P-only plant (ki=0, kd=0)
+  const errP = SETPOINT - tempP;
+  const uPRaw = kp * errP / 100;
+  tempP = plantStep(tempP, uPRaw);
+  intP = 0; lastErrP = errP;
+
+  // Full PID plant
+  const errFull = SETPOINT - tempFull;
+  const res = pidUpdate(errFull, intFull, lastErrFull, kp, ki, kd);
+  tempFull = plantStep(tempFull, res.output);
+  intFull = res.integral;
+  lastErrFull = errFull;
+}
+
+// ── Main loop ─────────────────────────────────────────────────────────────
 function draw() {
   if (!state.paused) {
-    stepPlant(plantP, pidP);
-    stepPlant(plantPID, pidFull);
-    plot.push(0, plantP.pos.x);
-    plot.push(1, plantPID.pos.x);
-    plot.push(2, TARGET);
-    met.update([plantP.pos.x, plantP.pos.x - TARGET, plantPID.pos.x, plantPID.pos.x - TARGET]);
+    // Run multiple sim steps per frame for faster visual response
+    for (let i = 0; i < 2; i++) step();
+    plot.push(0, tempP);
+    plot.push(1, tempFull);
+    plot.push(2, SETPOINT);
+    met.update([tempP.toFixed(1), (tempP - SETPOINT).toFixed(1), tempFull.toFixed(1), (tempFull - SETPOINT).toFixed(1), intFull.toFixed(2)]);
   }
-  drawPlant(canvasA, ctxA, plantP,   'P-only  Kp=' + kp.toFixed(1));
-  drawPlant(canvasB, ctxB, plantPID, 'PID  Ki=' + ki.toFixed(2) + ' Kd=' + kd.toFixed(1));
+  drawOven(canvasA, ctxA, tempP, 'P-only  Kp=' + kp.toFixed(1));
+  drawOven(canvasB, ctxB, tempFull, 'PID  Ki=' + ki.toFixed(2) + ' Kd=' + kd.toFixed(1));
   requestAnimationFrame(draw);
 }
+
+initState();
 draw();
 </script>
 <p class="home"><a href="../../index.html">← Home</a></p>

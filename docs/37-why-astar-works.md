@@ -77,7 +77,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/chapter37/index.html` renders the priority queue state and expanded cells in real time, colored by f-value. `browser/common/engine.js` implements BFS, greedy best-first, and A* as variants of the same priority queue structure — the only difference is the priority function. Watch the "frontier" (cells in the open set) to see how each algorithm expands: BFS grows a circle; greedy grows a beam toward the goal; A* grows an ellipse biased toward the goal but respecting obstacle geometry. The closed set (expanded cells) shows total work done.
+`browser/chapter37/index.html` defines both search algorithms inline: `bfsSearch` (lines 27–47) and `astarTracked` (lines 50–74). Both call `grid.neighbors(cur)` and `grid.heuristic(nb, goal)` from `browser/common/engine.js`; engine's `astar` is not used. Expanded cells are shaded blue on each side, and a `saving %` metric shows how many fewer cells A* expands than BFS. The `wallCol` slider adjusts the obstacle column. No greedy best-first variant is present — the comparison is BFS versus A*.
 
 ## When It Breaks
 

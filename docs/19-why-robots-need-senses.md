@@ -75,7 +75,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` maintains a ground-truth state (actual position, orientation) separate from the commanded state (integrated motor commands). In open-loop mode, the robot uses only commanded state. In sensing mode, the robot reads from the ground-truth state with optional noise. `browser/chapter19/index.html` overlays both trajectories to make the divergence visible.
+`browser/common/engine.js` provides `Body`, `PID`, and `Vec`. `browser/chapter19/index.html` creates two `Body` instances (`robotA` blind, `robotB` sighted) and one `PID(2.0, 0.1, 0.5, WALL_X - stopDist)`. The blind robot applies a constant `Vec(driveForce, 0)` until it hits `WALL_X`; the sighted robot calls `pidB.update(robotB.pos.x, 0.016)` each frame so it decelerates to a setpoint `stopDist` pixels from the wall. Both bodies use the same `Body.step` from the engine; the sensing logic is the PID position measurement, not a separate ground-truth layer.
 
 ## When It Breaks
 

@@ -80,7 +80,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` generates three sinusoidal currents with 120° phase offset and sums their coil field contributions using `Vec` superposition. `browser/chapter09/index.html` renders the resulting rotating field vector and shows how the rotor tracks it, exercising the vector field summation primitive.
+`browser/common/engine.js` provides `Body` (for the rotor) and `addTorque`. The three-phase logic is inline in `browser/chapter09/index.html`: each frame `phA = amplitude * Math.sin(t)`, `phB = amplitude * Math.sin(t + 2.094)`, `phC = amplitude * Math.sin(t + 4.189)`, then `rotor.addTorque(phA + phB + phC)` and `rotor.step(0.016)`. The summed torque is nearly constant because the three sinusoids 120° apart sum to zero ripple — visible in the strip plot.
 
 ## When It Breaks
 

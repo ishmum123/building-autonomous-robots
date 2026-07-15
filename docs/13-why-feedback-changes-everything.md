@@ -85,7 +85,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` implements the feedback loop as: error = target − output; correction = K_p × error; input = baseline + correction; then integrates the plant dynamics one step. `browser/chapter13/index.html` adds a disturbance injection button to demonstrate how feedback automatically corrects for unknown perturbations, contrasting with an open-loop comparison.
+`browser/common/engine.js` provides `Body`, `PID`, and `Vec`. `browser/chapter13/index.html` creates `openPlant` and `closedPlant` as `Body` instances and one `PID(kp, 0.1, 0.4, TARGET)`. Each frame the open-loop side applies a fixed `Vec(20, 0)` plus disturbance and drag, while the closed-loop side calls `pid.update(closedPlant.pos.x, 0.016)` for its force. A periodic `disturbance(t)` function drives both plants identically, making the feedback correction visible against the open-loop drift.
 
 ## When It Breaks
 

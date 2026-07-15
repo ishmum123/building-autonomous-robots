@@ -73,7 +73,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` models the solenoid as a stack of circular current loops, summing their Biot-Savart contributions along the axis. `browser/chapter05/index.html` renders field lines and lets you vary turn count and current to observe the B-field, exercising the `Vec` field summation primitive and the dipole force model built on top.
+`browser/common/engine.js` provides `Body` and `Vec`. The coil physics is inline in `browser/chapter05/index.html`: `fieldStrength = currentLevel * turns` scales linearly with I and N (simplifying Biot-Savart to a proportional relationship), then a 1/r² inline force `delta.div(dist).mul(fieldStrength * 20 / (dist * dist) * 500)` is passed to `nail.addForce()` and integrated with `nail.step(0.016)`. This is enough to show that doubling current or turns doubles the effective field and shortens the nail's time-to-impact.
 
 ## When It Breaks
 

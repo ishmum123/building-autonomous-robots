@@ -77,7 +77,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` maintains two separate PID instances with independent update timers. The attitude loop runs at configurable high rate, consuming attitude setpoint from the position loop; the position loop runs at lower rate and outputs attitude setpoints only when fresh GPS data is available. `browser/chapter18/index.html` shows both loops' state simultaneously, with the option to disable either loop independently.
+`browser/common/engine.js` provides `Quadcopter`, `PID`, and `Vec`. `browser/chapter18/index.html` wires the two loops inside `stepB(q, altPid, attPid)`: it calls `altPid.update(q.body.pos.y, 0.016)` for the altitude command and `attPid.update(q.body.angle, 0.016)` for the torque correction, then passes both to `q.setMotors(baseThrust - torqueCmd, baseThrust + torqueCmd)`. The left panel (`stepA`) runs altitude-only so both panels start with the same 0.3 rad tilt; the side-by-side shows how the attitude PID (`attB`) damps the tilt while the altitude-only drone spirals away.
 
 ## When It Breaks
 

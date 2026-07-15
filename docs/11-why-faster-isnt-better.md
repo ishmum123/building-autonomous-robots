@@ -77,7 +77,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` integrates F = ma with a configurable damping term. `browser/chapter11/index.html` shows the position-velocity phase portrait alongside the time-domain position trace, making the relationship between damping ratio and settling behavior visible.
+`browser/common/engine.js` provides `Body`, `PID`, and `Vec`. `browser/chapter11/index.html` creates two `Body` and two `PID` instances (`pidA` with `kpLow`, `pidB` with `kpHigh`), then each frame calls `plantA.addForce(new Vec(pidA.update(plantA.pos.x, 0.016), 0))`, applies a fixed drag `plantA.addForce(plantA.vel.mul(-0.5))`, and steps with `plantA.step(0.016)`. The side-by-side layout shows how raising `kp` from ~1.5 to ~8 turns a smooth approach into persistent oscillation.
 
 ## When It Breaks
 

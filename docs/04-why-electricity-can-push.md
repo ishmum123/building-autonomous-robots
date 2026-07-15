@@ -77,7 +77,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` applies the Lorentz force as **F** = I(**L** × **B**) per wire segment each timestep. `browser/chapter04/index.html` visualizes the current direction, field direction, and resulting force vector, and lets you vary current magnitude and wire orientation to observe how the cross product changes.
+`browser/common/engine.js` provides `Body`, `Vec`, and `addForce`. The force calculation is inline in `browser/chapter04/index.html`: when current is on, it calls `wire.addForce(new Vec(0, -liftForce))` where `liftForce` is the slider value, then `wire.step(0.016)`. The sim simplifies F = I(L×B) to a scalar vertical force controlled by a slider — enough to show how current magnitude governs whether the wire lifts or falls, with the cross-product direction shown as on-canvas annotation text.
 
 ## When It Breaks
 

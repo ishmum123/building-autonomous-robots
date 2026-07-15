@@ -79,7 +79,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` computes vertical force as F_z = total_thrust × cos(tilt_angle) − mg, making tilt compensation explicit. The altitude estimator runs a complementary filter with barometer and vertical accelerometer. Prop-wash barometric error is a configurable offset applied when throttle exceeds a threshold. `browser/chapter28/index.html` shows altitude, vertical velocity, throttle command, and tilt compensation factor on a single time-series display.
+`browser/common/engine.js` provides `Quadcopter` and `PID`. `browser/chapter28/index.html` runs two drones: the left applies a fixed thrust with no feedback; the right runs `pidB = new PID(kpAlt, kiAlt, 1.0, TARGET_Y)`, computing `thrustCmd = -pidB.update(qB.body.pos.y, 0.016)` each tick and calling `qB.setMotors(thrustCmd/2, thrustCmd/2)`. The comparison makes the core point visible: fixed thrust produces unstable altitude, PID feedback holds a hover target.
 
 ## When It Breaks
 

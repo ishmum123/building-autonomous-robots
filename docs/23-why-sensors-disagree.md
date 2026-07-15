@@ -82,7 +82,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` models each sensor independently with configurable noise and bias parameters. The bias can be switched on mid-run to simulate multipath or surface-type changes. `browser/chapter23/index.html` plots each sensor's reading, the true position, and several candidate fusion strategies simultaneously, allowing the comparison of naive averaging, median vote, and noise-weighted fusion.
+`browser/common/engine.js` provides `addNoise` to generate each sensor reading: `sA = addNoise(trueVal + biasA, noiseA)` and `sB = addNoise(trueVal + biasB, noiseB)`, with `noiseA`, `biasA`, `noiseB`, and `biasB` as slider-controlled parameters. The bias can be switched on mid-run to simulate multipath or surface-type changes. `browser/chapter23/index.html` plots sensor A, sensor B, and ground truth on a strip plot — the visual spread between the two lines shows why disagreement is inevitable and why it depends on noise and bias independently.
 
 ## When It Breaks
 

@@ -81,7 +81,11 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` implements the PID update as three parallel running calculations: proportional (current error), integral (Euler-accumulated error sum, clamped to prevent windup), and derivative (backward difference of error, optionally low-pass filtered). `browser/chapter16/index.html` lets you enable each term independently and inject step disturbances to observe how each contributes to the response.
+`browser/chapter16/index.html` models a first-order thermal plant (`plantStep`): heat input minus ambient loss drives `dT/dt`. The setpoint is 200°C. Two independent plants run side by side — P-only (ki=0) and full PID.
+
+The PID logic lives in `pidUpdate`: it computes the proportional term (`useP * kp * err`), accumulates the integral with Euler integration and clamps it to `±I_CLAMP = 50` to prevent windup (`clampEnabled` toggle), and computes the derivative as a backward difference `(err - lastErr) / DT`. Each of the three terms has an on/off button (`useP`, `useI`, `useD`) so you can isolate their effects.
+
+The "Inject disturbance" button (`disturbancePending`) drops both plant temperatures by 30°C, simulating a door opening. Toggle "I-Clamp: OFF" before pressing the button to observe integral windup: the integral accumulates while the heater saturates, then causes a long overshoot once temperature recovers.
 
 ## When It Breaks
 

@@ -77,7 +77,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` integrates the second-order ODE ẍ + 2ζω_n·ẋ + ω_n²·x = 0 at each timestep using Euler or Verlet integration. `browser/chapter12/index.html` plots position vs. time and the phase portrait (position vs. velocity), making the energy exchange visible as an ellipse that spirals inward under damping.
+`browser/common/engine.js` provides `Body` and `Vec`. The oscillator ODE is inline in `browser/chapter12/index.html`'s `stepMass(mass, c)` function: `spring = -k * disp`, `damp = -c * mass.vel.x`, then `mass.addForce(new Vec(spring + damp, 0))` and `mass.step(0.016)`. The slider variables `k`, `cUnder`, and `cOver` map to spring stiffness and damping coefficients, run side-by-side to show underdamped oscillation vs overdamped creep.
 
 ## When It Breaks
 

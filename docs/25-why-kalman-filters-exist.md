@@ -87,7 +87,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` implements the discrete Kalman filter as a predict-update cycle. The state vector is [position, velocity] with covariance matrix P. The predict step propagates mean and inflates P by process noise Q. The update step computes K from P and R, updates the mean, and deflates P. `browser/chapter25/index.html` shows the filter's uncertainty envelope (±1σ) evolving in real time alongside the raw measurements and true state.
+`browser/common/engine.js` provides `Kalman1D` for the predict-update cycle. `browser/chapter25/index.html` creates `kf = new Kalman1D(procNoise, measNoise)`, calls `kf.predict(1, VEL)` each tick and `kf.update(lastMeas)` on each noisy reading, then reads `kf.x` for the estimate. The strip plot shows raw measurement, Kalman estimate, and truth — the smoothing effect is visible immediately. The sim tracks covariance in `kf.p` but does not render a ±1σ envelope; the key insight — that a model-informed estimate beats raw measurement — is fully visible in the three-line comparison.
 
 ## When It Breaks
 

@@ -63,7 +63,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/chapter36/index.html` implements both a potential field planner and a 2D RRT with configurable goal bias. `browser/common/engine.js` handles collision checking via bounding-box overlap tests and the RRT nearest-neighbor search using a k-d tree for efficiency. Watch the RRT tree grow in real time — the tree structure reveals how the algorithm explores around obstacles, and goal bias (visible as occasional long extensions toward the goal) speeds convergence. The potential field visualizes the gradient magnitude as a heat map.
+`browser/common/engine.js` provides `Grid`, `astar`, `drawGrid`, `drawGridPath`, and `drawPoint`. `browser/chapter36/index.html` runs two robots on the same grid: the left robot uses inline `greedyPos(step)` (moves toward the goal each step, halts if `grid.isBlocked`), while the right robot plans with `path = astar(grid, START, GOAL)`. The `wallLen` slider adjusts a vertical wall obstacle; greedy gets trapped behind it while A* routes around. The side-by-side comparison makes the optimality gap concrete without any RRT or heat map.
 
 ## When It Breaks
 

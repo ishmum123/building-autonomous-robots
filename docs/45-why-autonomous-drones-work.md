@@ -72,13 +72,13 @@ Autonomy is not a single algorithm. It is the closed loop of these layers, opera
 
 Before changing anything, predict:
 
-- Disable the SLAM layer. The drone uses a pre-built map. Place a new obstacle (crane) midway. Does the drone avoid it, collide with it, or stop?
-- Disable the fault monitor. Reduce one motor to 70% at 80% of the mission duration. Does the drone make it back, or does the compensating overload cascade to a second failure?
-- Disable MPC (switch to reactive battery control with fixed 30% abort threshold). Set wind to 120% of predicted. Does the drone abort in time to return safely, or does it arrive at the delivery zone with insufficient return margin?
+- Increase `gpsNoise` to maximum. Does the raw-GPS drone still complete the 5-waypoint sequence, or does it overshoot and miss waypoints? Does the Kalman-filtered drone track more accurately?
+- Set `windX` to a strong value. Watch both drones approach each waypoint — does the raw-GPS drone oscillate more under wind, or does the Kalman filter's smoothed estimate help the PID stay on course?
+- Lower `kpPos`. Both drones become more sluggish approaching waypoints. Does the Kalman drone still converge reliably, or does its advantage over raw-GPS narrow as the controller becomes less aggressive?
 
 ## Implementation
 
-`browser/chapter45/index.html` is the integration demo: it runs the full stack — particle filter localization, occupancy grid SLAM, D* Lite planning, battery-model MPC, fault margin monitor, and attitude controller — in a single browser simulation. Each layer's output is visible: the particle cloud, the occupancy grid building in real time, the replanned path, the MPC battery prediction, the fault margin gauge, and the attitude loop at the bottom. `browser/common/engine.js` provides the shared dynamics, physics, and sensor models used by all layers. Toggle each layer on/off to observe specific failure modes. The full-stack run is the capstone: a drone completing an 800 m urban delivery autonomously, recovering from a mid-mission obstacle, and returning safely on a degraded motor.
+`browser/chapter45/index.html` is the capstone integration: two `Quadcopter` instances navigate a 5-waypoint sequence `WAYPOINTS = [[60,60],[220,60],[220,180],[60,180],[140,60]]`, one using raw `GPS` readings and one fusing GPS through `kfx = new Kalman1D(0.1, gpsNoise)` and `kfy = new Kalman1D(0.1, gpsNoise)`. Both sides use `PID` for position control (`pidBx`, `pidBy` with `kpPos` slider) and advance waypoints via an `atWaypoint()` proximity check. Wind is applied as a constant body force via the `windX` slider. A strip plot compares raw GPS error versus Kalman error over the mission. `browser/common/engine.js` provides `Quadcopter`, `GPS`, `Kalman1D`, and `PID`.
 
 ## When It Breaks
 

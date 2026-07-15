@@ -69,7 +69,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` implements a `Body` with angular position, and the commutation logic in `browser/chapter06/index.html` reads the shaft angle each timestep, selects the current direction, computes τ = NBIA·sin(θ) for each coil segment, and integrates angular velocity. The simulation makes the commutation event visible as a discrete current reversal.
+`browser/common/engine.js` provides `Body` and drawing helpers. The commutation logic is inline in `browser/chapter06/index.html`: each frame `phase = Math.floor(t / commutePeriod) % 2` selects the torque direction, `torque = phase === 0 ? pushStrength : -pushStrength`, and angular velocity is updated as `angVel += (torque + drag) * 0.016` using plain scalar integration. The sim makes the commutation event visible as the discrete phase-A/phase-B color switch on the rotor arrows.
 
 ## When It Breaks
 

@@ -65,7 +65,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/chapter39/index.html` contrasts a behavior-cloned navigator (replaying recorded waypoint sequences) against a goal-directed navigator (computing heading toward the explicit goal position at each step). `browser/common/engine.js` implements both controllers and a configurable distribution shift parameter that moves the environment from its training configuration. The error accumulation over time for behavior cloning versus the graceful adaptation of the goal-directed policy is plotted in real time. Note the divergence point — the step at which behavior cloning irreversibly fails — versus the goal-directed policy's smooth trajectory to the goal.
+`browser/chapter39/index.html` runs two `Body` instances: `rA` (the path follower) replays fixed x-positions from `TRAIN_PATH = Array.from({length:300}, (_, i) => 20 + i * 0.9)` with no y-correction; `rB` (the goal-directed drone) uses `pidB = new PID(6, 0.05, 0.8, TRACK_Y)` to hold y regardless of disturbance. A `slopeForce` slider and `perturbTime` slider introduce a lateral force after a set number of ticks — the distribution shift. The follower drifts off-track; the PID-driven robot corrects. Both controllers are inline in the HTML; `browser/common/engine.js` provides `Body`, `PID`, and `drawBody`.
 
 ## When It Breaks
 

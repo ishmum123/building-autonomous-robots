@@ -61,7 +61,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/chapter32/index.html` renders the occupancy grid in real time alongside the robot's lidar cone. `browser/common/engine.js` implements the log-odds update rule: each occupied hit increments a cell's log-odds by a constant; each free sweep decrements it. The grid is rendered as a grayscale probability field. Watch the posterior probability for each cell converge from 0.5 (unknown) toward 0 (free) or 1 (occupied) as evidence accumulates — and notice how drift corrupts the posterior in a way that's hard to undo.
+`browser/common/engine.js` provides `Grid` and `astar`. `browser/chapter32/index.html` creates `gridA = new Grid(COLS, ROWS)` and `gridB = new Grid(COLS, ROWS)`, runs a random walk on `gridA` (using a `dirs` array, checking `Grid.isBlocked`), and plans a path on `gridB` with `pathB = astar(gridB, [0, 0], [COLS-1, ROWS-1])`. The sim shows the difference between undirected exploration and goal-directed path planning on the same grid structure; `drawGrid` and `drawGridPath` render both side by side.
 
 ## When It Breaks
 

@@ -70,7 +70,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/chapter40/index.html` demonstrates three goal specifications — point goal, region goal, and waypoint list — side by side with the same underlying robot controller. `browser/common/engine.js` computes the control error as the difference between current world state and goal state; the controller drives this error to zero. The visualization shows the goal region, the current state, and the error vector driving the robot's motion. Switch between goal types to observe how the robot's behavior changes, especially near the goal boundary and near obstacles.
+`browser/chapter40/index.html` runs `rA = new Body('wanderer', ...)` driven by `gaussianRandom(randForce * 8)` forces each tick, and `rB = new Body('goal', ...)` steered by `pidBx = new PID(goalKp, 0, 0.5, GX)` and `pidBy = new PID(goalKp, 0, 0.5, GY)` toward a fixed goal point `(GX, GY)`. A `goalKp` slider and `randForce` slider adjust the comparison. The strip plot shows distance-to-goal over time for both robots; `browser/common/engine.js` provides `Body`, `PID`, `gaussianRandom`, and `drawBody`.
 
 ## When It Breaks
 

@@ -77,7 +77,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` computes torque from amp-turns and resistive loss from current density. `browser/chapter10/index.html` visualizes the slot cross-section and lets you vary wire gauge and winding pattern, showing how fill factor, resistance, current, and resulting torque all interact.
+`browser/common/engine.js` provides drawing helpers. The motor model is the inline `motorStep(turns, speed, angle)` function in `browser/chapter10/index.html`: `current = voltage / resistance`, `torque = 0.02 * turns * current`, `damping = -0.05 * speed`, then `speed += (torque + damping) * 0.016`. Running two instances side-by-side (`turnsA = 10`, `turnsB = 100`) with the same voltage and resistance makes the torque-turns relationship directly visible — no fill-factor geometry is modelled.
 
 ## When It Breaks
 

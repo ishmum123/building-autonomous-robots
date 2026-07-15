@@ -63,7 +63,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-The fault injection and margin tracking logic runs in `browser/chapter31/index.html` using `browser/common/engine.js` for the thrust and attitude dynamics. Look for the health monitor loop that computes remaining control authority each timestep — it sums available headroom across all actuators and triggers the graduated response when the aggregate margin drops below the threshold. The cascade failure mode demonstrates graphically how compensation for fault 1 can eliminate the margin needed to survive fault 2.
+`browser/chapter31/index.html` runs two `Quadcopter` instances and injects a binary motor failure at `failTime`: once triggered, the failed motor contribution is set to zero — `q.setMotors(lm, thr)` where `lm = failed ? 0 : thr`. The two PIDs (`pidA`, `pidB`) show how one drone recovers and the other does not, depending on its tuning margin. The sim simplifies fault handling to an on/off motor drop — enough to show how a single actuator loss can cascade when remaining motors are already near their limits. `browser/common/engine.js` provides `Quadcopter` and `PID`.
 
 ## When It Breaks
 

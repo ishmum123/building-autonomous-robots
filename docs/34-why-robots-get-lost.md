@@ -65,7 +65,13 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/chapter34/index.html` runs a particle filter with N configurable particles distributed over the map. `browser/common/engine.js` implements the three-step MCL loop: predict (move each particle by the commanded motion plus noise), weight (score each particle against the lidar scan), resample (probabilistic selection weighted by scores). The visualization shows the particle cloud overlaid on the map — watch multimodal distributions maintain multiple clusters until distinctive features resolve ambiguity.
+`browser/chapter34/index.html` runs a real Monte Carlo Localization loop over a 1D corridor with four door landmarks. All three MCL steps live in the sim:
+
+- `mclPredict`: each of the N particles advances by the commanded motion plus `gaussianRandom(motionNoise)`, spreading the cloud.
+- `mclWeight`: for each visible door (within `SENSOR_RANGE`), the robot takes a noisy range measurement; each particle is scored via `gaussianLikelihood` — a Gaussian centered on the predicted range from that particle. Weights are normalized.
+- `mclResample`: systematic resampling rebuilds the particle array proportional to weights, eliminating low-weight particles and duplicating high-weight ones.
+
+`mclEstimate` computes the weighted mean of all particles. The left canvas shows dead-reckoning drift (noisy odometry, no corrections); the right shows the particle cloud (dot opacity and size reflect weight) converging to the true position as doors come into view. The strip plot compares absolute error of both estimates over time.
 
 ## When It Breaks
 

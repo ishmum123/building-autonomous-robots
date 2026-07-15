@@ -73,7 +73,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/chapter38/index.html` implements D* Lite alongside full A* replanning for direct comparison. `browser/common/engine.js` maintains a "consistency flag" per cell that gets set when an edge cost changes; the replanning loop only processes flagged cells. The cell expansion count is displayed per replan cycle — the difference between D* Lite (tens of cells) and full A* (thousands of cells) is visible in real time. Toggle between modes to see the latency difference during rapid obstacle placement.
+`browser/common/engine.js` provides `Grid` and `astar`. `browser/chapter38/index.html` runs two robots: the stubborn robot follows `origPath = astar(gridA, START, GOAL)` computed once and ignores a new obstacle (tracked by `blockedA` flag), while the replanning robot calls `replanPath = astar(gridB, curPos, GOAL)` fresh from its current position when the obstacle appears at `obstFrame`. A strip plot compares steps taken by each; the cost of replanning versus the cost of stubbornness is directly observable. The sim uses full replanning — no incremental D* Lite.
 
 ## When It Breaks
 

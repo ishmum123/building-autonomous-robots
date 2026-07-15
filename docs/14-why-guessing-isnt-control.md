@@ -77,7 +77,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` simulates two robots with identical motors: one using only speed feedback, one with full position feedback in a cascade structure. `browser/chapter14/index.html` adds random disturbances (surface changes, load variations) and shows diverging vs. correcting position errors, demonstrating the closed-loop position state in the `Body` primitive.
+`browser/common/engine.js` provides `Body`, `PID`, and `Vec`. `browser/chapter14/index.html` creates two `Body` instances (`guesser` and `measurer`) and one `PID(kp, 0.05, 0.3, TARGET)`. Each frame the guesser receives a fixed `Vec(fixedForce, 0)` plus the wind `gust(t)`, while the measurer calls `pid.update(measurer.pos.x, 0.016)` for its force command. Both bodies receive the same gust, making the divergence between open-loop drift and closed-loop correction directly comparable.
 
 ## When It Breaks
 

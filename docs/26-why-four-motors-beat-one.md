@@ -78,7 +78,7 @@ Before changing anything, predict:
 
 ## Implementation
 
-`browser/common/engine.js` computes net force and torque from four motor speeds, using thrust coefficient (T = k_T × ω²) and torque coefficient (Q = k_Q × ω²). The yaw torque is the sum of signed torque contributions (CW positive, CCW negative). `browser/chapter26/index.html` displays individual motor speeds as bar graphs alongside the resulting roll/pitch/yaw rates and altitude.
+`browser/common/engine.js` provides the `Quadcopter` class; `browser/chapter26/index.html` creates `qA = new Quadcopter(1.0)` and `qB = new Quadcopter(1.0)`, drives the single-motor case with `qA.setMotors(thrustLevel, 0)` and the balanced case with `qB.setMotors(thrustLevel/2, thrustLevel/2)`. The sim passes thrust directly — the thrust-vs-speed relationship is conceptual framing; the important result (balanced motors stabilize tilt) is visible in the strip plot comparing `'single motor spin°'` versus `'balanced tilt°'`.
 
 ## When It Breaks
 

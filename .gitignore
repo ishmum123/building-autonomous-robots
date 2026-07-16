@@ -6,3 +6,4 @@ __pycache__/
 building-autonomous-robots.bundle
 robot-book-patches.zip
 .epub-tmp/
+.playwright-mcp/

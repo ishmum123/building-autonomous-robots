@@ -23,11 +23,11 @@ Any description must satisfy:
 
 ## Failed Attempts
 
-### Attempt 1: Treat it as a fluid you weigh
+### Attempt 1: Treat it as a material substance you weigh
 
-Every effect comes in amounts — more lightning means more destruction, more coins in the pile means a longer spark. So treat it like water: just measure the weight or volume. More fluid = more effect.
+Every effect comes in amounts — more lightning means more destruction, more coins in the pile means a longer spark. So treat it as a material substance: if something flows into the wire, the wire should gain mass. You should be able to collect it in a container and weigh what you've gathered. More substance = more effect.
 
-This predicts: a large bucket of weak fluid and a small cup of strong fluid should do identical work as long as they weigh the same; a big slow flow and a small fast jet carry the same energy.
+This predicts: a large container of weak substance and a small container of strong substance should do identical work as long as they weigh the same; a big slow stream and a small fast jet carry the same energy.
 
 Experimentally: two setups with the same "amount" behave completely differently. A massive static charge from rubbing amber can jump a centimeter gap but barely warms a wire; a small voltaic pile produces no visible spark but steadily heats wire to glowing. You can't substitute one for the other. Weight or volume is the wrong measure — or rather, it captures only half the story.
 

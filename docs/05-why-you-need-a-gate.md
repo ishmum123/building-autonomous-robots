@@ -31,9 +31,9 @@ The failure reveals: breaking a live path requires clean, fast separation. Slow 
 
 ### Attempt 2: A one-way valve made of a flap
 
-For directional control, build a mechanical flap inside a tube that current flows through. When push comes from the left, the flap opens. When push comes from the right, the flap closes harder. Simple fluid logic.
+For directional control, build a mechanical flap inside a conductor: when push comes from the left, the flap opens; when push comes from the right, the flap closes harder. Direction encoded in geometry.
 
-Electrons aren't fluid. You can't build a physical flap inside a metal conductor. Any solid barrier you insert just becomes a resistor (conducting, but with loss) or an insulator (blocking both directions). There's no mechanical flap analog that a solid or liquid conductor can accommodate.
+The geometry doesn't work. You can't insert a physical flap inside a metal conductor. Any solid barrier you place there becomes a resistor (conducting with loss) or an insulator (blocking both directions). There's no geometry-based one-way gate that a solid conductor can accommodate.
 
 The failure reveals: the directional valve problem can't be solved with mechanical barriers inside conductors. The solution needs a different physical principle — a material that conducts in one direction due to its *atomic structure*, not its geometry.
 

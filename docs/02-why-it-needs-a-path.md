@@ -17,7 +17,7 @@ Any solution must satisfy:
 
 - Touch the terminals of a small battery to a metal spoon, a wooden stick, a glass rod, a piece of copper pipe. Notice: some complete the connection, some don't. What's the pattern?
 - The metal that doesn't resist much is a conductor. The material that blocks it is an insulator. Now: how do you use one to carry and the other to confine?
-- A pipe carries water. A fat pipe carries more per moment than a thin pipe at the same pressure. Does the same logic apply to your flow?
+- Does a thicker wire carry more? How would you test whether the path's cross-section limits how much flows?
 
 ## Failed Attempts
 

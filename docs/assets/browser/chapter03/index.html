@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 03: Why Magnets Pull</title>
+<title>Chapter 03: Why You'd Bottle It</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -12,10 +12,10 @@
 </style>
 </head>
 <body>
-<h1>Chapter 03: Why Magnets Pull</h1>
-<p class="key">A magnetic field transfers force across a distance — force grows as 1/r².</p>
+<h1>Chapter 03: Why You'd Bottle It</h1>
+<p class="key">You can't store the flow — you store the push. Battery holds voltage flat; capacitor dumps fast.</p>
 <div id="controls"></div>
-<canvas id="sim" width="600" height="220"></canvas>
+<canvas id="sim" width="600" height="240"></canvas>
 <div id="plot-wrap"></div>
 <div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
@@ -24,66 +24,135 @@
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
 
-let fieldStrength = 30000;
-let magnet, nail;
+const V_SOURCE = 9;
+const BAT_CAPACITY = 1.0;  // drains slowly
+const CAP_CAPACITY = 0.12; // drains fast
+const R_LAMP = 20;
+
+let vBat = 0, vCap = 0;
+let mode = 'idle'; // 'charging' | 'powering' | 'idle'
+let connected = false;
+let lampOn = false;
+let t = 0;
 
 function initState() {
-  magnet = new Body('magnet', 100, 110, { mass: 999, radius: 20, color: '#e53935' });
-  nail   = new Body('nail',   500, 110, { mass: 0.5, radius: 8,  color: '#607d8b' });
+  vBat = 0; vCap = 0; mode = 'idle'; connected = false; lampOn = false; t = 0;
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Field strength', 5000, 80000, 1000, fieldStrength, v => { fieldStrength = v; });
+const chargeBtn = UI.button(cp, 'Charge', () => {
+  connected = true; lampOn = false;
+  chargeBtn.classList.add('active');
+  disconnBtn.classList.remove('active');
+  lampBtn.classList.remove('active');
+});
+const disconnBtn = UI.button(cp, 'Disconnect', () => {
+  connected = false; lampOn = false;
+  disconnBtn.classList.add('active');
+  chargeBtn.classList.remove('active');
+  lampBtn.classList.remove('active');
+});
+const lampBtn = UI.button(cp, 'Power lamp', () => {
+  connected = false; lampOn = true;
+  lampBtn.classList.add('active');
+  chargeBtn.classList.remove('active');
+  disconnBtn.classList.remove('active');
+});
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 600, height: 100, window: 300,
-  colors: ['#e53935', '#ff9800'], labels: ['distance (px)', 'force (N)'],
-  title: 'Distance & Force over time'
+  width: 600, height: 100, window: 350,
+  colors: ['#388e3c', '#1976d2'], labels: ['V_battery', 'V_capacitor'],
+  title: 'Battery vs capacitor voltage over time'
 });
 
-const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Distance', 'Force', 'Nail speed']);
+const met = UI.metrics(document.getElementById('metrics-wrap'), ['V_bat', 'V_cap', 'I_lamp (mA)']);
 
 function draw() {
+  const dt = 0.016;
+  t += dt;
+
   if (!state.paused) {
-    const delta = magnet.pos.sub(nail.pos);
-    const dist = Math.max(delta.length(), 20);
-    const forceMag = fieldStrength / (dist * dist);
-    const forceVec = delta.div(dist).mul(forceMag);
-    nail.clearForces();
-    nail.addForce(forceVec);
-    nail.step(0.016);
-    // bounce off magnet
-    if (nail.pos.x < magnet.pos.x + magnet.radius + nail.radius) {
-      nail.pos.x = magnet.pos.x + magnet.radius + nail.radius;
-      nail.vel.x = Math.abs(nail.vel.x) * 0.3;
+    if (connected) {
+      // Battery charges slowly (RC-like with large tau)
+      vBat += (V_SOURCE - vBat) * dt / BAT_CAPACITY;
+      // Capacitor charges near-instantly (small tau)
+      vCap += (V_SOURCE - vCap) * dt / CAP_CAPACITY;
+      vBat = Math.min(vBat, V_SOURCE);
+      vCap = Math.min(vCap, V_SOURCE);
+    } else if (lampOn) {
+      // Both discharge through lamp — capacitor much faster
+      const iBat = vBat / R_LAMP;
+      const iCap = vCap / R_LAMP;
+      vBat = Math.max(0, vBat - iBat * dt / BAT_CAPACITY * 2);
+      vCap = Math.max(0, vCap - iCap * dt / CAP_CAPACITY * 0.8);
     }
-    // bounce off right wall
-    if (nail.pos.x > canvas.width - 10) {
-      nail.pos.x = canvas.width - 10;
-      nail.vel.x *= -0.5;
-    }
-    plot.push(0, dist);
-    plot.push(1, forceMag);
-    met.update([dist, forceMag, nail.vel.x]);
+    plot.push(0, vBat);
+    plot.push(1, vCap);
+    const iLamp = lampOn ? (vBat + vCap) / R_LAMP * 1000 / 2 : 0;
+    met.update([vBat, vCap, iLamp]);
   }
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  // field lines (visual)
-  ctx.strokeStyle = '#ffcdd2'; ctx.lineWidth = 1;
-  for (let r = 40; r <= 200; r += 40) {
-    ctx.beginPath();
-    ctx.arc(magnet.pos.x, magnet.pos.y, r, 0, Math.PI * 2);
-    ctx.stroke();
+
+  // Draw battery tank (fill bar)
+  const batH = Math.round((vBat / V_SOURCE) * 120);
+  ctx.fillStyle = '#e8f5e9'; ctx.fillRect(60, 40, 80, 130);
+  ctx.fillStyle = '#4caf50'; ctx.fillRect(60, 40 + (130 - batH), 80, batH);
+  ctx.strokeStyle = '#388e3c'; ctx.lineWidth = 2; ctx.strokeRect(60, 40, 80, 130);
+  ctx.fillStyle = '#333'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('BATTERY', 100, 35);
+  ctx.fillStyle = '#1b5e20'; ctx.font = '11px sans-serif';
+  ctx.fillText(vBat.toFixed(1) + 'V', 100, 185);
+
+  // Draw capacitor tank (fill bar)
+  const capH = Math.round((vCap / V_SOURCE) * 120);
+  ctx.fillStyle = '#e3f2fd'; ctx.fillRect(200, 40, 80, 130);
+  ctx.fillStyle = '#1976d2'; ctx.fillRect(200, 40 + (130 - capH), 80, capH);
+  ctx.strokeStyle = '#1565c0'; ctx.lineWidth = 2; ctx.strokeRect(200, 40, 80, 130);
+  ctx.fillStyle = '#333'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('CAPACITOR', 240, 35);
+  ctx.fillStyle = '#0d47a1'; ctx.font = '11px sans-serif';
+  ctx.fillText(vCap.toFixed(1) + 'V', 240, 185);
+
+  // Lamp
+  const lampV = lampOn ? (vBat + vCap) / 2 : 0;
+  const bright = Math.min(lampV / V_SOURCE, 1);
+  if (bright > 0.05) {
+    const grad = ctx.createRadialGradient(480, 110, 0, 480, 110, 10 + bright * 35);
+    grad.addColorStop(0, 'rgba(255,235,59,0.9)');
+    grad.addColorStop(1, 'rgba(255,235,59,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(480, 110, 10 + bright * 35, 0, Math.PI * 2); ctx.fill();
   }
-  drawBody(ctx, magnet);
-  drawBody(ctx, nail);
-  drawArrow(ctx, nail.pos, { x: nail.pos.x - (nail.pos.x - magnet.pos.x) * 0.3, y: nail.pos.y }, '#e53935');
-  ctx.fillStyle = '#333'; ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText('Magnet (fixed)', magnet.pos.x - 30, magnet.pos.y - 30);
+  ctx.fillStyle = bright > 0.1 ? '#f9a825' : '#aaa';
+  ctx.beginPath(); ctx.arc(480, 110, 12, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(480, 110, 12, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('LAMP', 480, 140);
+
+  // Source
+  ctx.fillStyle = '#fff3e0'; ctx.fillRect(350, 75, 60, 50);
+  ctx.strokeStyle = '#f57c00'; ctx.lineWidth = 2; ctx.strokeRect(350, 75, 60, 50);
+  ctx.fillStyle = '#333'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('SOURCE', 380, 97);
+  ctx.fillStyle = '#e64a19'; ctx.fillText(V_SOURCE + 'V', 380, 112);
+
+  // State label
+  const stateLabel = connected ? 'Charging...' : lampOn ? 'Powering lamp' : 'Disconnected';
+  const stateColor = connected ? '#388e3c' : lampOn ? '#f57c00' : '#888';
+  ctx.fillStyle = stateColor; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(stateLabel, 300, 215);
+
+  // Charge rate annotation
+  if (connected) {
+    ctx.fillStyle = '#388e3c'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('slow charge', 100, 200);
+    ctx.fillStyle = '#1565c0';
+    ctx.fillText('fast charge', 240, 200);
+  }
 
   requestAnimationFrame(draw);
 }

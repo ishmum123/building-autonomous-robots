@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 25: Why Kalman Filters Exist</title>
+<title>Chapter 25: Why Accelerometers Lie</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -11,8 +11,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 25: Why Kalman Filters Exist</h1>
-<p class="key">A noisy raw measurement lurches around truth. A Kalman filter maintains an uncertainty estimate and blends prediction + measurement optimally — smoother than either alone.</p>
+<h1>Chapter 25: Why Accelerometers Lie</h1>
+<p class="key">An accelerometer measures specific force — motion acceleration PLUS gravity. At rest it reads 9.81 m/s² upward. The raw reading and the true kinematic acceleration are different.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,69 +20,74 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-let measNoise = 8, procNoise = 0.1;
+let extAccel = 0, noiseStd = 0.5;
+let t = 0;
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Raw measurement', 'Kalman estimate', 280, 200);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Raw sensor reading', 'True kinematic accel', 280, 200);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
-let truePos, kf, lastMeas, lastEst;
+const accel = new Accelerometer(noiseStd);
+let body;
 function initState() {
-  truePos = 50;
-  kf = new Kalman1D(procNoise, measNoise);
-  kf.x = 50;
-  lastMeas = 50; lastEst = 50;
+  body = new Body('b', 140, 100, { mass: 1, radius: 18, color: '#1976d2' });
+  t = 0;
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Meas noise R', 1, 30, 1, measNoise, v => { measNoise = v; kf.r = v; });
-UI.slider(cp, 'Process noise Q', 0.01, 1, 0.01, procNoise, v => { procNoise = v; kf.q = v; });
+UI.slider(cp, 'External accel', -5, 5, 0.5, extAccel, v => { extAccel = v; });
+UI.slider(cp, 'Noise std', 0, 2, 0.1, noiseStd, v => { noiseStd = v; accel.noiseStd = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 580, height: 120, window: 400,
+  width: 580, height: 120, window: 300,
   colors: ['#e53935', '#1976d2', '#4caf50'],
-  labels: ['raw meas', 'Kalman est', 'truth'],
-  title: 'Noisy measurement vs Kalman estimate vs truth'
+  labels: ['raw sensor Y', 'true kin accel Y', 'gravity -9.81'],
+  title: 'Accelerometer reading vs true kinematic acceleration'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Truth', 'Raw meas', 'Kalman est', 'Kalman gain K']);
+  ['Raw sensor X', 'Raw sensor Y', 'True accel Y', 'Diff']);
 
-const VEL = 0.8;
+const G = 9.81;
 
-function drawTrack(c, cx, val, label, color) {
+function drawAccel(c, cx, reading, trueA, label, color) {
   cx.clearRect(0, 0, c.width, c.height);
-  cx.fillStyle = '#e8e8e8'; cx.fillRect(0, 75, c.width, 30);
-  drawPoint(cx, truePos % c.width, 90, '#4caf50', 8);
-  drawPoint(cx, val % c.width, 90, color, 6);
-  const err = val - truePos;
-  cx.fillStyle = Math.abs(err) < 3 ? '#4caf50' : '#e53935';
-  cx.fillRect(truePos % c.width, 86, Math.min(Math.max(err, -c.width), c.width), 4);
+  const cx2 = c.width / 2, cy2 = c.height / 2;
+  // circle body
+  cx.fillStyle = '#1976d2'; cx.beginPath(); cx.arc(cx2, cy2, 20, 0, Math.PI * 2); cx.fill();
+  // arrow for displayed value
+  const scale = 8;
+  const ay = reading * scale;
+  drawArrow(cx, { x: cx2, y: cy2 }, { x: cx2, y: cy2 - ay }, color);
   cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
-  cx.fillText(label, 4, 18);
-  cx.fillText('err=' + err.toFixed(1), 4, 32);
+  cx.fillText(label, 4, 16);
+  cx.fillText(trueA.toFixed(2) + ' m/s²', 4, 30);
 }
 
 function draw() {
   if (!state.paused) {
-    truePos += VEL;
-    if (truePos > 600) { truePos = 50; kf.x = 50; kf.p = 1; }
+    t++;
+    // body has an externally applied accel in Y
+    body.clearForces();
+    body.addForce(new Vec(0, body.mass * extAccel));  // kinematic force
+    body.step(0.016);
 
-    lastMeas = addNoise(truePos, measNoise);
-    kf.predict(1, VEL);
-    kf.update(lastMeas);
-    lastEst = kf.x;
-    const K = kf.p / (kf.p + kf.r);  // approximate gain display
+    // raw accelerometer reading: includes gravity (y axis flipped: up is negative in screen)
+    const rawY = extAccel + G + gaussianRandom(noiseStd);
+    const rawX = gaussianRandom(noiseStd);
+    // true kinematic accel
+    const trueKinY = extAccel;
 
-    plot.push(0, lastMeas);
-    plot.push(1, lastEst);
-    plot.push(2, truePos);
-    met.update([truePos, lastMeas, lastEst, K]);
+    plot.push(0, rawY);
+    plot.push(1, trueKinY);
+    plot.push(2, G);
+    met.update([rawX, rawY, trueKinY, rawY - trueKinY]);
+
+    drawAccel(canvasA, ctxA, rawY, rawY, 'Raw sensor (includes gravity)', '#e53935');
+    drawAccel(canvasB, ctxB, trueKinY, trueKinY, 'True kinematic accel', '#1976d2');
   }
-  drawTrack(canvasA, ctxA, lastMeas, 'Raw measurement (noise=' + measNoise + ')', '#e53935');
-  drawTrack(canvasB, ctxB, lastEst, 'Kalman estimate', '#1976d2');
   requestAnimationFrame(draw);
 }
 draw();

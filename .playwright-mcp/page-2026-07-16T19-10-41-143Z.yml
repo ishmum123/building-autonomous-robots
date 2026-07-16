@@ -1,0 +1,20 @@
+- generic [ref=e1]:
+  - 'heading "Chapter 01: Why You''d Want This Power" [level=1] [ref=e2]'
+  - paragraph [ref=e3]: Electricity is measured by two handles — push (voltage) and flow (current); together they are power.
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]: "Voltage (V): 6"
+      - slider [ref=e8]: "6"
+    - button "Motor" [ref=e9] [cursor=pointer]
+    - button "Heater" [active] [ref=e10] [cursor=pointer]
+    - button "Lamp" [ref=e11] [cursor=pointer]
+    - generic [ref=e12]:
+      - button "Pause" [ref=e13] [cursor=pointer]
+      - button "Reset" [ref=e14] [cursor=pointer]
+  - generic [ref=e19]:
+    - generic [ref=e20]: "V: 6.00"
+    - generic [ref=e21]: "I (A): 0.30"
+    - generic [ref=e22]: "P (W): 1.80"
+  - paragraph [ref=e23]:
+    - link "← Home" [ref=e24] [cursor=pointer]:
+      - /url: ../../index.html

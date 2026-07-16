@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 43: Why Estimation Beats Measurement</title>
+<title>Chapter 43: Why Robots Change Their Mind</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -11,8 +11,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 43: Why Estimation Beats Measurement</h1>
-<p class="key">Raw measurement lurches. A Kalman estimator maintains uncertainty and is far smoother than either alone.</p>
+<h1>Chapter 43: Why Robots Change Their Mind</h1>
+<p class="key">A stubborn robot follows its original plan into a newly-blocked cell. A replanning robot detours around it.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,69 +20,89 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-let measNoise = 5.0, procNoise = 0.05;
-let truePos, kf, lastMeas, lastEst, t;
+const CELL = 32, COLS = 10, ROWS = 10, OX = 8, OY = 8;
+const START = [0, 0], GOAL = [9, 9];
+let obstFrame = 120;
+let t, gridA, gridB, origPath, replanPath, stepA, stepB, blockedA;
 
 function initState() {
-  t = 0; truePos = 30;
-  kf = new Kalman1D(procNoise, measNoise * measNoise);
-  kf.x = 30; lastMeas = 30; lastEst = 30;
+  t = 0; stepA = 0; stepB = 0; blockedA = false;
+  gridA = new Grid(COLS, ROWS);
+  gridB = new Grid(COLS, ROWS);
+  origPath = astar(gridA, START, GOAL);
+  replanPath = origPath ? [...origPath] : null;
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Meas noise R', 1, 20, 1, measNoise, v => { measNoise = v; kf.r = v * v; });
-UI.slider(cp, 'Process noise Q', 0.01, 0.5, 0.01, procNoise, v => { procNoise = v; kf.q = v; });
+UI.slider(cp, 'Obstacle appears (frame)', 30, 250, 10, obstFrame, v => { obstFrame = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Raw measurement', 'Kalman estimate', 280, 200);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Stubborn (no replan)', 'Replanning robot', 336, 336);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 580, height: 120, window: 400,
-  colors: ['#e53935', '#1976d2', '#4caf50'],
-  labels: ['raw meas', 'Kalman est', 'truth'],
-  title: 'Position: raw measurement vs Kalman estimate vs truth'
+  width: 580, height: 100, window: 300,
+  colors: ['#e53935', '#1976d2'],
+  labels: ['stubborn step', 'replan step'],
+  title: 'Progress toward goal (higher = further along)'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Truth', 'Raw meas', 'Kalman est', 'Raw err', 'Kalman err']);
+  ['Frame', 'Stubborn pos', 'Replan pos', 'Replanned?']);
 
-const VEL = 0.5;
+let replanned = false;
 
-function drawTrack(cv, cx, val, color, label) {
+function drawSide(cx, cv, grid, path, step, label) {
   cx.clearRect(0, 0, cv.width, cv.height);
-  cx.fillStyle = '#e8e8e8'; cx.fillRect(0, 80, cv.width, 40);
-  const tx = truePos % (cv.width - 10) + 5;
-  const px = val % (cv.width - 10) + 5;
-  drawPoint(cx, tx, 100, '#4caf50', 8);
-  drawPoint(cx, px, 100, color, 6);
-  const err = val - truePos;
-  cx.fillStyle = Math.abs(err) < 2 ? '#4caf50' : '#e53935';
-  cx.fillRect(Math.min(tx, px), 96, Math.abs(err), 4);
-  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
-  cx.fillText(label, 4, 16);
-  cx.fillText('err=' + err.toFixed(2), 4, 30);
+  drawGrid(cx, grid, { cell: CELL, ox: OX, oy: OY });
+  if (path) drawGridPath(cx, path, { cell: CELL, ox: OX, oy: OY });
+  drawPoint(cx, OX + START[0]*CELL+CELL/2, OY + START[1]*CELL+CELL/2, '#4caf50', 7);
+  drawPoint(cx, OX + GOAL[0]*CELL+CELL/2, OY + GOAL[1]*CELL+CELL/2, '#ff9800', 7);
+  if (path && step < path.length) {
+    const [px, py] = path[step];
+    drawPoint(cx, OX + px*CELL+CELL/2, OY + py*CELL+CELL/2, '#1976d2', 7);
+  }
+  cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 8);
 }
 
 function draw() {
   if (!state.paused) {
     t++;
-    truePos += VEL;
-    if (truePos > 500) { truePos = 30; kf.x = 30; kf.p = 1; }
-    lastMeas = addNoise(truePos, measNoise);
-    kf.predict(1, VEL);
-    kf.update(lastMeas);
-    lastEst = kf.x;
-    plot.push(0, lastMeas);
-    plot.push(1, lastEst);
-    plot.push(2, truePos);
-    met.update([truePos.toFixed(1), lastMeas.toFixed(1), lastEst.toFixed(1),
-      Math.abs(lastMeas - truePos).toFixed(2), Math.abs(lastEst - truePos).toFixed(2)]);
+    // spawn obstacle at obstFrame
+    if (t === obstFrame) {
+      // block a cell near middle of path
+      const mid = origPath ? Math.floor(origPath.length * 0.55) : 5;
+      if (origPath && mid < origPath.length) {
+        const [ox, oy] = origPath[mid];
+        gridA.block(ox, oy);
+        gridB.block(ox, oy);
+        // stubborn: keeps old path; replan: recalculates
+        const curPos = replanPath && stepB < replanPath.length ? replanPath[stepB] : START;
+        replanPath = astar(gridB, curPos, GOAL);
+        stepB = 0;
+        replanned = true;
+      }
+    }
+
+    if (t % 6 === 0) {
+      // stubborn: keep going, detect collision
+      if (origPath && stepA < origPath.length - 1) {
+        const next = origPath[stepA + 1];
+        if (gridA.isBlocked(next[0], next[1])) { blockedA = true; }
+        else if (!blockedA) stepA++;
+      }
+      if (replanPath && stepB < replanPath.length - 1) stepB++;
+    }
+
+    plot.push(0, stepA);
+    plot.push(1, stepB);
+    met.update([t, stepA, stepB, replanned ? 'YES' : 'no']);
   }
-  drawTrack(canvasA, ctxA, lastMeas, '#e53935', 'Raw (noise=' + measNoise + ')');
-  drawTrack(canvasB, ctxB, lastEst, '#1976d2', 'Kalman estimate');
+  drawSide(ctxA, canvasA, gridA, origPath, stepA, blockedA ? 'STUCK at new obstacle' : 'Stubborn step ' + stepA);
+  drawSide(ctxB, canvasB, gridB, replanPath, stepB, replanned ? 'Replanned! step ' + stepB : 'Step ' + stepB);
   requestAnimationFrame(draw);
 }
 draw();

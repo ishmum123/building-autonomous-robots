@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 04: Why Electricity Can Push</title>
+<title>Chapter 04: Why the Path Fights Back</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -12,8 +12,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 04: Why Electricity Can Push</h1>
-<p class="key">A current in a magnetic field experiences a Lorentz force — F = I·L×B.</p>
+<h1>Chapter 04: Why the Path Fights Back</h1>
+<p class="key">Every path resists — push becomes heat. V = I·R; heat = I²·R.</p>
 <div id="controls"></div>
 <canvas id="sim" width="600" height="240"></canvas>
 <div id="plot-wrap"></div>
@@ -23,66 +23,121 @@
 <script>
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
-const fieldLineY = 130;
 
-let liftForce = 120;
-let currentOn = true;
-let wire;
+let voltage = 6;
+let resistance = 10;
+let t = 0;
 
-function initState() {
-  wire = new Body('wire', 300, 200, { mass: 0.2, radius: 8, color: '#ff9800' });
-}
+function initState() { t = 0; }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Force (current)', 0, 300, 5, liftForce, v => { liftForce = v; });
-UI.button(cp, 'Toggle Current', () => { currentOn = !currentOn; });
+UI.slider(cp, 'Voltage (V)', 1, 12, 0.5, voltage, v => { voltage = v; plot.clear(); });
+UI.slider(cp, 'Resistance (Ω)', 1, 50, 1, resistance, v => { resistance = v; plot.clear(); });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
   width: 600, height: 100, window: 300,
-  colors: ['#ff9800', '#4caf50'], labels: ['height', 'velocity'],
-  title: 'Wire height & velocity'
+  colors: ['#1976d2', '#e53935'], labels: ['current (A)', 'heat power (W)'],
+  title: 'Current and heat dissipation over time'
 });
 
-const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Height', 'Velocity', 'Current']);
+const met = UI.metrics(document.getElementById('metrics-wrap'), ['V (V)', 'I (A)', 'P_heat (W)']);
 
 function draw() {
+  t += 0.016;
+  const current = voltage / resistance;
+  const pHeat = current * current * resistance;
+  const heatFrac = Math.min(pHeat / 15, 1);  // normalise, max ~15W
+
   if (!state.paused) {
-    wire.clearForces();
-    wire.addForce(new Vec(0, 60));   // gravity-like downward
-    if (currentOn) wire.addForce(new Vec(0, -liftForce));
-    wire.step(0.016);
-    // floor
-    if (wire.pos.y > canvas.height - 20) { wire.pos.y = canvas.height - 20; wire.vel.y = 0; }
-    // ceiling
-    if (wire.pos.y < 50) { wire.pos.y = 50; wire.vel.y = 0; }
-    const h = canvas.height - wire.pos.y;
-    plot.push(0, h);
-    plot.push(1, wire.vel.y);
-    met.update([h, wire.vel.y, currentOn ? liftForce : 0]);
+    plot.push(0, current);
+    plot.push(1, pHeat);
+    met.update([voltage, current, pHeat]);
   }
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  // field region
-  ctx.fillStyle = '#e3f2fd';
-  ctx.fillRect(100, fieldLineY - 20, 400, 40);
-  ctx.strokeStyle = '#1976d2'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(100, fieldLineY); ctx.lineTo(500, fieldLineY); ctx.stroke();
-  ctx.fillStyle = '#1565c0'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('B field (into page)', 300, fieldLineY - 6);
 
-  drawBody(ctx, wire);
-  if (currentOn) {
-    drawArrow(ctx,
-      { x: wire.pos.x, y: wire.pos.y + 25 },
-      { x: wire.pos.x, y: wire.pos.y - 25 },
-      '#4caf50');
+  // Source
+  ctx.fillStyle = '#e8f5e9';
+  ctx.fillRect(20, 95, 60, 50);
+  ctx.strokeStyle = '#388e3c'; ctx.lineWidth = 2; ctx.strokeRect(20, 95, 60, 50);
+  ctx.fillStyle = '#333'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('SOURCE', 50, 116);
+  ctx.fillStyle = '#1565c0'; ctx.fillText(voltage.toFixed(1) + 'V', 50, 131);
+
+  // Wire + narrowing channel for resistance
+  // Channel narrows as R increases: width from 20 down to 4
+  const channelW = Math.max(4, 20 - resistance * 0.32);
+  const channelX = 200;
+  const channelLen = 200;
+  const midY = 120;
+
+  // Lead wires
+  ctx.strokeStyle = '#ff9800'; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(80, midY); ctx.lineTo(channelX, midY); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(channelX + channelLen, midY); ctx.lineTo(500, midY); ctx.stroke();
+
+  // Narrowing channel — draw as tapered rectangle
+  ctx.beginPath();
+  ctx.moveTo(channelX, midY - 10);
+  ctx.lineTo(channelX + 20, midY - channelW / 2);
+  ctx.lineTo(channelX + channelLen - 20, midY - channelW / 2);
+  ctx.lineTo(channelX + channelLen, midY - 10);
+  ctx.lineTo(channelX + channelLen, midY + 10);
+  ctx.lineTo(channelX + channelLen - 20, midY + channelW / 2);
+  ctx.lineTo(channelX + 20, midY + channelW / 2);
+  ctx.lineTo(channelX, midY + 10);
+  ctx.closePath();
+
+  // Heat glow fill
+  const r = Math.round(180 + 75 * heatFrac);
+  const g = Math.round(100 - 90 * heatFrac);
+  ctx.fillStyle = `rgb(${r},${g},50)`;
+  ctx.fill();
+  ctx.strokeStyle = '#bf360c'; ctx.lineWidth = 1.5; ctx.stroke();
+
+  // Heat shimmer lines when hot
+  if (heatFrac > 0.3) {
+    ctx.strokeStyle = `rgba(255,100,0,${heatFrac * 0.6})`;
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) {
+      const hx = channelX + 30 + i * 40;
+      const shimmer = Math.sin(t * 10 + i) * 6 * heatFrac;
+      ctx.beginPath(); ctx.moveTo(hx, midY - channelW / 2 - 5 + shimmer);
+      ctx.lineTo(hx, midY + channelW / 2 + 5 + shimmer); ctx.stroke();
+    }
   }
-  ctx.fillStyle = '#333'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText(currentOn ? 'Current ON — Lorentz force lifts wire' : 'Current OFF — gravity wins', 8, 20);
+
+  // Resistance label
+  ctx.fillStyle = '#333'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('R = ' + resistance + ' Ω', channelX + channelLen / 2, midY - 20);
+  ctx.fillStyle = heatFrac > 0.5 ? '#bf360c' : '#888';
+  ctx.fillText('P_heat = ' + pHeat.toFixed(1) + ' W' + (heatFrac > 0.6 ? ' 🔥' : ''), channelX + channelLen / 2, midY + 30);
+
+  // Return wire
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(500, midY); ctx.lineTo(530, midY); ctx.lineTo(530, 200); ctx.lineTo(50, 200); ctx.lineTo(50, 145); ctx.stroke();
+
+  // Flow dots — slow when R high
+  const dotSpeed = Math.max(current * 8, 0.2);
+  const dotPhase = (t * dotSpeed * 20) % 120;
+  ctx.fillStyle = '#ff9800';
+  for (let i = 0; i < 3; i++) {
+    const x = 90 + ((i * 120 + dotPhase) % 360);
+    if (x > 80 && x < 500) {
+      const inChannel = x > channelX && x < channelX + channelLen;
+      const dotR = inChannel ? Math.max(1.5, 3 * (channelW / 20)) : 3;
+      ctx.beginPath(); ctx.arc(x, midY, dotR, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // V=IR annotation
+  ctx.fillStyle = '#1565c0'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('I = V/R = ' + current.toFixed(2) + ' A', 20, 30);
+  ctx.fillStyle = '#e53935';
+  ctx.fillText('P = I²R = ' + pHeat.toFixed(1) + ' W', 20, 48);
 
   requestAnimationFrame(draw);
 }

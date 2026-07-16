@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 29: Why Wind Wins</title>
+<title>Chapter 29: Why Sensor Fusion Works</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -11,8 +11,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 29: Why Wind Wins</h1>
-<p class="key">A gust pushes the drone sideways. Without position feedback the disturbance accumulates. With a P+I position controller the integral term builds up and rejects the steady wind.</p>
+<h1>Chapter 29: Why Sensor Fusion Works</h1>
+<p class="key">A fast noisy IMU and a slow accurate GPS each cover the other's weakness. Fusing them with a weighted blend beats either alone.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,108 +20,84 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-const HOME_X = 140, HOME_Y = 110;
-let windX = 20, kpPos = 2.0, kiPos = 0.15;
-let t = 0;
+let imuNoise = 5, gpsNoise = 2, fusionW = 0.7;
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'No position ctrl (blown)', 'PID position ctrl (holds)', 280, 220);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Single sensor (IMU only)', 'Fused (IMU + GPS)', 280, 200);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
-let qA, qB, pidX, pidY, altA, altB;
+let truePos, imuEst, fusedEst, velTrue;
 function initState() {
-  t = 0;
-  qA = new Quadcopter(1.0);
-  qA.body.pos = new Vec(HOME_X, HOME_Y);
-  qB = new Quadcopter(1.0);
-  qB.body.pos = new Vec(HOME_X, HOME_Y);
-  pidX = new PID(kpPos, kiPos, 0.3, HOME_X);
-  pidY = new PID(kpPos, kiPos, 0.3, HOME_Y);
-  altA = new PID(4.0, 0.1, 0.8, HOME_Y);
+  truePos = 50; imuEst = 50; fusedEst = 50; velTrue = 1.0;
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Wind force', 0, 60, 5, windX, v => { windX = v; });
-UI.slider(cp, 'Pos Kp', 0.5, 6, 0.25, kpPos, v => { kpPos = v; pidX.kp = v; pidY.kp = v; });
-UI.slider(cp, 'Pos Ki', 0, 0.5, 0.02, kiPos, v => { kiPos = v; pidX.ki = v; pidY.ki = v; });
+UI.slider(cp, 'IMU noise', 0.5, 15, 0.5, imuNoise, v => { imuNoise = v; });
+UI.slider(cp, 'GPS noise', 0.5, 8, 0.5, gpsNoise, v => { gpsNoise = v; });
+UI.slider(cp, 'Fusion weight (GPS)', 0.1, 0.9, 0.05, fusionW, v => { fusionW = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
   width: 580, height: 120, window: 400,
-  colors: ['#ff9800', '#1976d2', '#4caf50'],
-  labels: ['no ctrl drift', 'PID drift', 'zero'],
-  title: 'Lateral drift from home position during wind gust'
+  colors: ['#e53935', '#ff9800', '#1976d2', '#4caf50'],
+  labels: ['IMU err', 'GPS err', 'fused err', 'zero'],
+  title: '|Error| vs time: IMU-only vs fused'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Wind on?', 'No-ctrl drift', 'PID drift', 'PID I term']);
+  ['True pos', 'IMU err', 'GPS reading', 'Fused err']);
 
-const G = 9.81;
-const WIND_START = 120, WIND_END = 300;
+let frame = 0;
+const GPS_RATE = 30;
 
-function getWind(t) {
-  return (t >= WIND_START && t <= WIND_END) ? windX : 0;
-}
-
-function drawQuad(c, cx, q, label, wind) {
+function drawEstimate(c, cx, est, label, color) {
   cx.clearRect(0, 0, c.width, c.height);
-  // home cross
-  cx.strokeStyle = '#4caf50'; cx.lineWidth = 1; cx.setLineDash([4, 4]);
-  cx.beginPath(); cx.moveTo(HOME_X, 0); cx.lineTo(HOME_X, c.height); cx.stroke();
-  cx.beginPath(); cx.moveTo(0, HOME_Y); cx.lineTo(c.width, HOME_Y); cx.stroke();
-  cx.setLineDash([]);
-  // wind arrow
-  if (wind > 0) {
-    drawArrow(cx, { x: 10, y: HOME_Y }, { x: 10 + wind * 0.8, y: HOME_Y }, '#e53935');
-    cx.fillStyle = '#e53935'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
-    cx.fillText('wind', 12, HOME_Y - 6);
-  }
-  const bx = Math.max(15, Math.min(265, q.body.pos.x));
-  const by = Math.max(15, Math.min(205, q.body.pos.y));
-  cx.save(); cx.translate(bx, by);
-  cx.fillStyle = q.body.color;
-  cx.fillRect(-22, -5, 44, 10);
-  cx.restore();
+  // track bar
+  cx.fillStyle = '#e8e8e8'; cx.fillRect(0, 80, c.width, 30);
+  // truth
+  drawPoint(cx, truePos % c.width, 95, '#4caf50', 8);
+  // estimate
+  drawPoint(cx, est % c.width, 95, color, 6);
+  // error bar
+  const errPx = (est - truePos);
+  cx.fillStyle = Math.abs(errPx) < 3 ? '#4caf50' : '#e53935';
+  const x0 = truePos % c.width;
+  cx.fillRect(x0, 90, Math.min(Math.max(errPx, -c.width), c.width), 4);
   cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
-  cx.fillText(label, 4, 16);
-  cx.fillText('drift=' + (q.body.pos.x - HOME_X).toFixed(1), 4, 30);
+  cx.fillText(label, 4, 18);
+  cx.fillText('err=' + (est - truePos).toFixed(1) + 'px', 4, 32);
 }
 
 function draw() {
   if (!state.paused) {
-    t++;
-    const wind = getWind(t);
+    frame++;
+    // true position moves
+    truePos += velTrue * 0.5;
+    if (truePos > 600) { truePos = 50; imuEst = 50; fusedEst = 50; }
 
-    // No ctrl: only altitude hover, no lateral control
-    qA.body.clearForces();
-    qA.body.addForce(new Vec(wind, -qA.body.mass * G));
-    const altThrA = -altA.update(qA.body.pos.y, 0.016);
-    qA.setMotors(altThrA / 2, altThrA / 2);
-    qA.body.addForce(qA.body.vel.mul(-0.5));
-    qA.step(0.016);
-    qA.body.pos.x = Math.max(10, Math.min(270, qA.body.pos.x));
-    qA.body.pos.y = Math.max(10, Math.min(210, qA.body.pos.y));
+    // IMU estimate: integrate with noise
+    imuEst += velTrue * 0.5 + gaussianRandom(imuNoise) * 0.1;
 
-    // PID ctrl: lateral + altitude
-    qB.body.clearForces();
-    qB.body.addForce(new Vec(wind, -qB.body.mass * G));
-    const fX = pidX.update(qB.body.pos.x, 0.016);
-    const fY = -pidY.update(qB.body.pos.y, 0.016);
-    qB.setMotors((fY + fX) / 2, (fY - fX) / 2);
-    qB.body.addForce(qB.body.vel.mul(-0.5));
-    qB.step(0.016);
-    qB.body.pos.x = Math.max(10, Math.min(270, qB.body.pos.x));
-    qB.body.pos.y = Math.max(10, Math.min(210, qB.body.pos.y));
+    // GPS: slow, accurate
+    let gpsMeas = null;
+    if (frame % GPS_RATE === 0) gpsMeas = addNoise(truePos, gpsNoise);
 
-    plot.push(0, qA.body.pos.x - HOME_X);
-    plot.push(1, qB.body.pos.x - HOME_X);
-    plot.push(2, 0);
-    met.update([wind > 0 ? 'YES' : 'no', (qA.body.pos.x - HOME_X).toFixed(1), (qB.body.pos.x - HOME_X).toFixed(1), pidX.integral.toFixed(2)]);
+    // Fused: use GPS when available, else dead-reckon
+    fusedEst += velTrue * 0.5 + gaussianRandom(imuNoise * 0.3) * 0.1;
+    if (gpsMeas !== null) {
+      fusedEst = fusedEst * (1 - fusionW) + gpsMeas * fusionW;
+    }
+
+    const gpsDisp = gpsMeas !== null ? gpsMeas : NaN;
+    plot.push(0, Math.abs(imuEst - truePos));
+    plot.push(1, gpsMeas !== null ? Math.abs(gpsMeas - truePos) : undefined);
+    plot.push(2, Math.abs(fusedEst - truePos));
+    plot.push(3, 0);
+    met.update([truePos, imuEst - truePos, isNaN(gpsDisp) ? '—' : gpsDisp.toFixed(1), fusedEst - truePos]);
   }
-  const w = getWind(t);
-  drawQuad(canvasA, ctxA, qA, 'No pos ctrl', w);
-  drawQuad(canvasB, ctxB, qB, 'PID pos ctrl Kp=' + kpPos.toFixed(1), w);
+  drawEstimate(canvasA, ctxA, imuEst, 'IMU only (noise=' + imuNoise + ')', '#e53935');
+  drawEstimate(canvasB, ctxB, fusedEst, 'Fused (GPS w=' + fusionW.toFixed(2) + ')', '#1976d2');
   requestAnimationFrame(draw);
 }
 draw();

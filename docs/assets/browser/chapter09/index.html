@@ -2,20 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 09: Why Three Wires Are Better Than Two</title>
+<title>Chapter 09: Why Magnets Pull</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 680px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .key { color: #555; max-width: 640px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
-<h1>Chapter 09: Why Three Wires Are Better Than Two</h1>
-<p class="key">Three phased currents create a continuously rotating magnetic field — smoother torque than single-phase switching.</p>
+<h1>Chapter 09: Why Magnets Pull</h1>
+<p class="key">A magnetic field transfers force across a distance — force grows as 1/r².</p>
 <div id="controls"></div>
-<canvas id="sim" width="600" height="250"></canvas>
+<canvas id="sim" width="600" height="220"></canvas>
 <div id="plot-wrap"></div>
 <div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
@@ -24,84 +24,66 @@
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
 
-let amplitude = 2, freq = 0.08;
-let rotor, t;
+let fieldStrength = 30000;
+let magnet, nail;
 
 function initState() {
-  rotor = new Body('rotor', 300, 125, { mass: 0.5, radius: 30, color: '#1976d2' });
-  t = 0;
+  magnet = new Body('magnet', 100, 110, { mass: 999, radius: 20, color: '#e53935' });
+  nail   = new Body('nail',   500, 110, { mass: 0.5, radius: 8,  color: '#607d8b' });
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Amplitude', 0.5, 5, 0.1, amplitude, v => { amplitude = v; });
-UI.slider(cp, 'Frequency', 0.02, 0.2, 0.01, freq, v => { freq = v; });
+UI.slider(cp, 'Field strength', 5000, 80000, 1000, fieldStrength, v => { fieldStrength = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 600, height: 110, window: 300,
-  colors: ['#e53935', '#4caf50', '#ff9800', '#1976d2'],
-  labels: ['phase A', 'phase B', 'phase C', 'ang vel'],
-  title: 'Three phase currents & Rotor angular velocity'
+  width: 600, height: 100, window: 300,
+  colors: ['#e53935', '#ff9800'], labels: ['distance (px)', 'force (N)'],
+  title: 'Distance & Force over time'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Angular vel', 'Phase A', 'Phase B', 'Phase C']);
+  ['Distance', 'Force', 'Nail speed']);
 
 function draw() {
   if (!state.paused) {
-    t += freq;
-    const phA = amplitude * Math.sin(t);
-    const phB = amplitude * Math.sin(t + 2.094);
-    const phC = amplitude * Math.sin(t + 4.189);
-    rotor.clearForces();
-    rotor.addTorque(phA + phB + phC);
-    rotor.step(0.016);
-
-    plot.push(0, phA);
-    plot.push(1, phB);
-    plot.push(2, phC);
-    plot.push(3, rotor.angularVel);
-    met.update([rotor.angularVel, phA, phB, phC]);
+    const delta = magnet.pos.sub(nail.pos);
+    const dist = Math.max(delta.length(), 20);
+    const forceMag = fieldStrength / (dist * dist);
+    const forceVec = delta.div(dist).mul(forceMag);
+    nail.clearForces();
+    nail.addForce(forceVec);
+    nail.step(0.016);
+    // bounce off magnet
+    if (nail.pos.x < magnet.pos.x + magnet.radius + nail.radius) {
+      nail.pos.x = magnet.pos.x + magnet.radius + nail.radius;
+      nail.vel.x = Math.abs(nail.vel.x) * 0.3;
+    }
+    // bounce off right wall
+    if (nail.pos.x > canvas.width - 10) {
+      nail.pos.x = canvas.width - 10;
+      nail.vel.x *= -0.5;
+    }
+    plot.push(0, dist);
+    plot.push(1, forceMag);
+    met.update([dist, forceMag, nail.vel.x]);
   }
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const cx = 300, cy = 125, R = 30;
-  // stator field direction arrow
-  const fieldAngle = t;
-  ctx.strokeStyle = '#bbb'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.arc(cx, cy, R + 18, 0, Math.PI * 2); ctx.stroke();
-  drawArrow(ctx,
-    { x: cx - Math.cos(fieldAngle) * (R + 18), y: cy - Math.sin(fieldAngle) * (R + 18) },
-    { x: cx + Math.cos(fieldAngle) * (R + 18), y: cy + Math.sin(fieldAngle) * (R + 18) },
-    '#bbb');
-
-  drawBody(ctx, rotor);
-
-  // phase bars below canvas area
-  const phA = amplitude * Math.sin(t);
-  const phB = amplitude * Math.sin(t + 2.094);
-  const phC = amplitude * Math.sin(t + 4.189);
-  const barPhases = [phA, phB, phC];
-  const phColors = ['#e53935', '#4caf50', '#ff9800'];
-  const labels = ['A', 'B', 'C'];
-  for (let i = 0; i < 3; i++) {
-    const bx = 200 + i * 70, barH = barPhases[i] * 25;
-    ctx.fillStyle = phColors[i];
-    if (barH >= 0) {
-      ctx.fillRect(bx, 215 - barH, 30, barH);
-    } else {
-      ctx.fillRect(bx, 215, 30, -barH);
-    }
-    ctx.strokeStyle = '#999'; ctx.lineWidth = 1;
-    ctx.strokeRect(bx, 215 - amplitude * 25, 30, amplitude * 50);
-    ctx.fillStyle = '#333'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
-    ctx.fillText(labels[i], bx + 15, 245);
+  // field lines (visual)
+  ctx.strokeStyle = '#ffcdd2'; ctx.lineWidth = 1;
+  for (let r = 40; r <= 200; r += 40) {
+    ctx.beginPath();
+    ctx.arc(magnet.pos.x, magnet.pos.y, r, 0, Math.PI * 2);
+    ctx.stroke();
   }
-
-  ctx.fillStyle = '#333'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText('Three phases create smooth rotation — no torque ripple dips', 8, 20);
+  drawBody(ctx, magnet);
+  drawBody(ctx, nail);
+  drawArrow(ctx, nail.pos, { x: nail.pos.x - (nail.pos.x - magnet.pos.x) * 0.3, y: nail.pos.y }, '#e53935');
+  ctx.fillStyle = '#333'; ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('Magnet (fixed)', magnet.pos.x - 30, magnet.pos.y - 30);
 
   requestAnimationFrame(draw);
 }

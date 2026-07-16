@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 23: Why Sensors Disagree</title>
+<title>Chapter 23: Why Quadcopters Need Two Brains</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -11,8 +11,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 23: Why Sensors Disagree</h1>
-<p class="key">Two sensors measuring the same value give different readings — each has its own noise and bias. Trusting one naively leads to error; the right answer lies between them.</p>
+<h1>Chapter 23: Why Quadcopters Need Two Brains</h1>
+<p class="key">Attitude (tilt) and altitude (height) are separate but coupled. The fast inner attitude loop must run inside the slower outer position loop.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,71 +20,93 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-let noiseA = 6, biasA = 10, noiseB = 20, biasB = -5;
+const HOV_Y = 80;
+let kpAtt = 3.0, kpAlt = 5.0;
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Sensor A readings', 'Sensor B readings', 280, 200);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Altitude only (no att ctrl)', 'Two-loop (att + alt)', 280, 220);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
-let trueVal = 140;
-function initState() { trueVal = 140; }
+let qA, qB, altA, altB, attB;
+function initState() {
+  qA = new Quadcopter(1.0);
+  qA.body.pos = new Vec(140, 200); qA.body.angle = 0.3;
+  qB = new Quadcopter(1.0);
+  qB.body.pos = new Vec(140, 200); qB.body.angle = 0.3;
+  altA = new PID(kpAlt, 0.1, 1.0, HOV_Y);
+  altB = new PID(kpAlt, 0.1, 1.0, HOV_Y);
+  attB = new PID(kpAtt, 0, 0.8, 0);
+}
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Noise A', 0, 30, 1, noiseA, v => { noiseA = v; });
-UI.slider(cp, 'Bias A', -30, 30, 1, biasA, v => { biasA = v; });
-UI.slider(cp, 'Noise B', 0, 40, 1, noiseB, v => { noiseB = v; });
-UI.slider(cp, 'Bias B', -30, 30, 1, biasB, v => { biasB = v; });
+UI.slider(cp, 'Attitude Kp', 0.5, 8, 0.5, kpAtt, v => { kpAtt = v; attB.kp = v; });
+UI.slider(cp, 'Altitude Kp', 1, 10, 0.5, kpAlt, v => { kpAlt = v; altA.kp = v; altB.kp = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 580, height: 120, window: 300,
-  colors: ['#1976d2', '#e53935', '#4caf50'],
-  labels: ['sensor A', 'sensor B', 'truth'],
-  title: 'Sensor A vs B readings — same true value'
+  width: 580, height: 120, window: 400,
+  colors: ['#ff9800', '#1976d2', '#e53935'],
+  labels: ['no att: tilt', 'two-loop: tilt', 'target 0'],
+  title: 'Attitude angle over time'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Truth', 'Sensor A', 'A err', 'Sensor B', 'B err']);
+  ['No-att tilt°', 'Two-loop tilt°', 'Alt err A', 'Alt err B']);
 
-// Smoothed display values
-let sA = trueVal, sB = trueVal;
+function r2d(r) { return (r * 180 / Math.PI).toFixed(1); }
 
-function drawSensor(c, cx, reading, label, color) {
+function stepA(q, altPid) {
+  const thrust = -altPid.update(q.body.pos.y, 0.016);
+  q.setMotors(thrust, thrust);
+  q.body.addForce(new Vec(0, -q.body.mass * 9.81));
+  q.step(0.016);
+  q.body.pos.x = Math.max(20, Math.min(260, q.body.pos.x));
+  q.body.pos.y = Math.max(10, Math.min(210, q.body.pos.y));
+}
+
+function stepB(q, altPid, attPid) {
+  const baseThrust = -altPid.update(q.body.pos.y, 0.016);
+  const torqueCmd  = attPid.update(q.body.angle, 0.016);
+  q.setMotors(baseThrust - torqueCmd, baseThrust + torqueCmd);
+  q.body.addForce(new Vec(0, -q.body.mass * 9.81));
+  q.step(0.016);
+  q.body.pos.x = Math.max(20, Math.min(260, q.body.pos.x));
+  q.body.pos.y = Math.max(10, Math.min(210, q.body.pos.y));
+}
+
+function drawQuad(c, cx, q, label) {
   cx.clearRect(0, 0, c.width, c.height);
-  // horizontal bar showing uncertainty zone
-  const scale = 0.9;
-  const mid = c.height / 2;
-  cx.fillStyle = color + '22';
-  cx.fillRect(0, mid - 25, c.width, 50);
-  // truth line
-  cx.strokeStyle = '#4caf50'; cx.lineWidth = 2; cx.setLineDash([4, 4]);
-  cx.beginPath(); cx.moveTo(trueVal * scale, 0); cx.lineTo(trueVal * scale, c.height); cx.stroke();
+  cx.strokeStyle = '#4caf50'; cx.setLineDash([4, 4]);
+  cx.beginPath(); cx.moveTo(0, HOV_Y); cx.lineTo(c.width, HOV_Y); cx.stroke();
   cx.setLineDash([]);
-  // reading dot
-  drawPoint(cx, reading * scale, mid, color, 8);
-  // error bracket
-  const errPx = (reading - trueVal) * scale;
-  cx.strokeStyle = '#e53935'; cx.lineWidth = 1.5;
-  cx.beginPath(); cx.moveTo(trueVal * scale, mid); cx.lineTo(trueVal * scale + errPx, mid); cx.stroke();
+  // draw body as rectangle to show tilt
+  const bx = q.body.pos.x, by = q.body.pos.y, ang = q.body.angle;
+  cx.save();
+  cx.translate(bx, by);
+  cx.rotate(ang);
+  cx.fillStyle = q.body.color;
+  cx.fillRect(-20, -6, 40, 12);
+  cx.fillStyle = '#fff';
+  cx.fillRect(-2, -8, 4, 16);
+  cx.restore();
   cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
   cx.fillText(label, 4, 16);
-  cx.fillText('read=' + reading.toFixed(1) + ' err=' + (reading - trueVal).toFixed(1), 4, 30);
-  cx.fillStyle = '#4caf50'; cx.font = '9px sans-serif';
-  cx.fillText('truth=' + trueVal.toFixed(0), 4, c.height - 8);
+  cx.fillText('tilt=' + r2d(q.body.angle) + '°', 4, 30);
+  cx.fillText('alt=' + q.body.pos.y.toFixed(0), 4, 44);
 }
 
 function draw() {
   if (!state.paused) {
-    sA = addNoise(trueVal + biasA, noiseA);
-    sB = addNoise(trueVal + biasB, noiseB);
-    plot.push(0, sA);
-    plot.push(1, sB);
-    plot.push(2, trueVal);
-    met.update([trueVal, sA, sA - trueVal, sB, sB - trueVal]);
+    stepA(qA, altA);
+    stepB(qB, altB, attB);
+    plot.push(0, qA.body.angle);
+    plot.push(1, qB.body.angle);
+    plot.push(2, 0);
+    met.update([r2d(qA.body.angle), r2d(qB.body.angle), qA.body.pos.y - HOV_Y, qB.body.pos.y - HOV_Y]);
   }
-  drawSensor(canvasA, ctxA, sA, 'Sensor A (bias=' + biasA + ', noise=' + noiseA + ')', '#1976d2');
-  drawSensor(canvasB, ctxB, sB, 'Sensor B (bias=' + biasB + ', noise=' + noiseB + ')', '#e53935');
+  drawQuad(canvasA, ctxA, qA, 'Alt loop only');
+  drawQuad(canvasB, ctxB, qB, 'Att + Alt loops');
   requestAnimationFrame(draw);
 }
 draw();

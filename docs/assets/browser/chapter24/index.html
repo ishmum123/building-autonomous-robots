@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 24: Why Sensor Fusion Works</title>
+<title>Chapter 24: Why Robots Need Senses</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -11,8 +11,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 24: Why Sensor Fusion Works</h1>
-<p class="key">A fast noisy IMU and a slow accurate GPS each cover the other's weakness. Fusing them with a weighted blend beats either alone.</p>
+<h1>Chapter 24: Why Robots Need Senses</h1>
+<p class="key">Without sensors a robot drives open-loop into walls. With a range sensor it can stop and hold position near the obstacle.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,84 +20,84 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-let imuNoise = 5, gpsNoise = 2, fusionW = 0.7;
+const WALL_X = 250;
+let driveForce = 40, stopDist = 60;
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Single sensor (IMU only)', 'Fused (IMU + GPS)', 280, 200);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Blind (no sensor)', 'Sighted (range sensor)', 280, 180);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
-let truePos, imuEst, fusedEst, velTrue;
+let robotA, robotB, pidB;
 function initState() {
-  truePos = 50; imuEst = 50; fusedEst = 50; velTrue = 1.0;
+  robotA = new Body('A', 20, 90, { mass: 1, radius: 12, color: '#ff9800' });
+  robotB = new Body('B', 20, 90, { mass: 1, radius: 12, color: '#1976d2' });
+  pidB = new PID(2.0, 0.1, 0.5, WALL_X - stopDist);
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'IMU noise', 0.5, 15, 0.5, imuNoise, v => { imuNoise = v; });
-UI.slider(cp, 'GPS noise', 0.5, 8, 0.5, gpsNoise, v => { gpsNoise = v; });
-UI.slider(cp, 'Fusion weight (GPS)', 0.1, 0.9, 0.05, fusionW, v => { fusionW = v; });
+UI.slider(cp, 'Drive force', 5, 80, 5, driveForce, v => { driveForce = v; });
+UI.slider(cp, 'Stop dist', 20, 100, 5, stopDist, v => { stopDist = v; pidB.setpoint = WALL_X - v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 580, height: 120, window: 400,
-  colors: ['#e53935', '#ff9800', '#1976d2', '#4caf50'],
-  labels: ['IMU err', 'GPS err', 'fused err', 'zero'],
-  title: '|Error| vs time: IMU-only vs fused'
+  width: 580, height: 110, window: 400,
+  colors: ['#ff9800', '#1976d2'],
+  labels: ['blind pos', 'sighted pos'],
+  title: 'Robot position: blind vs sighted'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['True pos', 'IMU err', 'GPS reading', 'Fused err']);
+  ['Blind pos', 'Blind spd', 'Sighted pos', 'Range']);
 
-let frame = 0;
-const GPS_RATE = 30;
-
-function drawEstimate(c, cx, est, label, color) {
+function drawRobot(c, cx, robot, label, crashed) {
   cx.clearRect(0, 0, c.width, c.height);
-  // track bar
-  cx.fillStyle = '#e8e8e8'; cx.fillRect(0, 80, c.width, 30);
-  // truth
-  drawPoint(cx, truePos % c.width, 95, '#4caf50', 8);
-  // estimate
-  drawPoint(cx, est % c.width, 95, color, 6);
-  // error bar
-  const errPx = (est - truePos);
-  cx.fillStyle = Math.abs(errPx) < 3 ? '#4caf50' : '#e53935';
-  const x0 = truePos % c.width;
-  cx.fillRect(x0, 90, Math.min(Math.max(errPx, -c.width), c.width), 4);
+  // floor
+  cx.fillStyle = '#e0e0e0'; cx.fillRect(0, 115, c.width, 40);
+  // wall
+  cx.fillStyle = '#795548'; cx.fillRect(WALL_X, 60, 15, 90);
+  // stop-dist indicator (sighted side)
+  if (!crashed) {
+    cx.strokeStyle = '#1976d244'; cx.setLineDash([4, 4]);
+    cx.beginPath(); cx.moveTo(WALL_X - stopDist, 60); cx.lineTo(WALL_X - stopDist, 150); cx.stroke();
+    cx.setLineDash([]);
+  }
+  drawBody(cx, robot);
+  if (crashed) {
+    cx.fillStyle = '#e53935'; cx.font = 'bold 13px sans-serif'; cx.textAlign = 'center';
+    cx.fillText('CRASHED!', c.width / 2, 40);
+  }
   cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
   cx.fillText(label, 4, 18);
-  cx.fillText('err=' + (est - truePos).toFixed(1) + 'px', 4, 32);
+  cx.fillText('x=' + robot.pos.x.toFixed(0), 4, 32);
 }
 
+let crashedA = false;
 function draw() {
   if (!state.paused) {
-    frame++;
-    // true position moves
-    truePos += velTrue * 0.5;
-    if (truePos > 600) { truePos = 50; imuEst = 50; fusedEst = 50; }
-
-    // IMU estimate: integrate with noise
-    imuEst += velTrue * 0.5 + gaussianRandom(imuNoise) * 0.1;
-
-    // GPS: slow, accurate
-    let gpsMeas = null;
-    if (frame % GPS_RATE === 0) gpsMeas = addNoise(truePos, gpsNoise);
-
-    // Fused: use GPS when available, else dead-reckon
-    fusedEst += velTrue * 0.5 + gaussianRandom(imuNoise * 0.3) * 0.1;
-    if (gpsMeas !== null) {
-      fusedEst = fusedEst * (1 - fusionW) + gpsMeas * fusionW;
+    // blind: constant drive
+    if (!crashedA) {
+      robotA.clearForces();
+      robotA.addForce(new Vec(driveForce, 0));
+      robotA.addForce(robotA.vel.mul(-0.5));
+      robotA.step(0.016);
+      if (robotA.pos.x >= WALL_X - 12) { robotA.pos.x = WALL_X - 12; robotA.vel.x = 0; crashedA = true; }
     }
+    // sighted: PID to stop-dist
+    robotB.clearForces();
+    pidB.setpoint = WALL_X - stopDist;
+    robotB.addForce(new Vec(pidB.update(robotB.pos.x, 0.016), 0));
+    robotB.addForce(robotB.vel.mul(-1));
+    robotB.step(0.016);
+    robotB.pos.x = Math.min(WALL_X - 13, robotB.pos.x);
 
-    const gpsDisp = gpsMeas !== null ? gpsMeas : NaN;
-    plot.push(0, Math.abs(imuEst - truePos));
-    plot.push(1, gpsMeas !== null ? Math.abs(gpsMeas - truePos) : undefined);
-    plot.push(2, Math.abs(fusedEst - truePos));
-    plot.push(3, 0);
-    met.update([truePos, imuEst - truePos, isNaN(gpsDisp) ? '—' : gpsDisp.toFixed(1), fusedEst - truePos]);
+    const range = WALL_X - robotB.pos.x;
+    plot.push(0, robotA.pos.x);
+    plot.push(1, robotB.pos.x);
+    met.update([robotA.pos.x, robotA.vel.x, robotB.pos.x, range]);
   }
-  drawEstimate(canvasA, ctxA, imuEst, 'IMU only (noise=' + imuNoise + ')', '#e53935');
-  drawEstimate(canvasB, ctxB, fusedEst, 'Fused (GPS w=' + fusionW.toFixed(2) + ')', '#1976d2');
+  drawRobot(canvasA, ctxA, robotA, 'Blind robot', crashedA);
+  drawRobot(canvasB, ctxB, robotB, 'Sighted (stop=' + stopDist + 'px)', false);
   requestAnimationFrame(draw);
 }
 draw();

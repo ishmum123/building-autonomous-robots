@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 06: Why Motors Spin</title>
+<title>Chapter 06: Why It Should Switch Itself</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -12,8 +12,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 06: Why Motors Spin</h1>
-<p class="key">A motor switches current at the right moment to keep rotating — commutation converts alternating push into continuous spin.</p>
+<h1>Chapter 06: Why It Should Switch Itself</h1>
+<p class="key">A tiny current can gate a huge one — a switch operated by electricity itself.</p>
 <div id="controls"></div>
 <canvas id="sim" width="600" height="240"></canvas>
 <div id="plot-wrap"></div>
@@ -24,73 +24,191 @@
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
 
-let pushStrength = 40, commutePeriod = 50;
-let angVel, angle, t;
+const THRESHOLD = 0.5;   // base current (mA) to turn on transistor
+const MAX_CTRL = 2.0;     // max control current (mA)
+const MAIN_VOLTAGE = 12;
+const R_LOAD = 20;
+const GAIN = 50;          // I_main = I_ctrl * GAIN (when on)
+
+let iControl = 0.0;
+let blinking = false;
+let blinkT = 0;
+let t = 0;
 
 function initState() {
-  angVel = 0; angle = 0; t = 0;
+  iControl = 0; blinking = false; blinkT = 0; t = 0;
+  ctrlSlider_update(0);
 }
-initState();
+
+let ctrlSlider_update = (v) => {};
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Push torque', 5, 120, 5, pushStrength, v => { pushStrength = v; });
-UI.slider(cp, 'Switch period (frames)', 10, 150, 5, commutePeriod, v => { commutePeriod = v; });
-const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+// Slider for control current
+const sliderEl = UI.slider(cp, 'I_control (mA)', 0, MAX_CTRL, 0.05, iControl, v => {
+  iControl = v;
+});
+// Patch to expose update
+ctrlSlider_update = (v) => {
+  iControl = v;
+  // find input in sliderEl and update
+  const inp = sliderEl.querySelector('input');
+  const lbl = sliderEl.querySelector('label');
+  if (inp) { inp.value = v; }
+  if (lbl) { lbl.textContent = 'I_control (mA): ' + v.toFixed(2); }
+};
+
+const blinkBtn = UI.button(cp, 'Blink', () => {
+  blinking = !blinking;
+  blinkBtn.classList.toggle('active', blinking);
+  if (!blinking) ctrlSlider_update(iControl);
+});
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); blinkBtn.classList.remove('active'); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 600, height: 100, window: 400,
-  colors: ['#1976d2', '#ff9800'], labels: ['angular vel', 'commutation'],
-  title: 'Angular velocity & Commutation phase'
+  width: 600, height: 100, window: 300,
+  colors: ['#4caf50', '#1976d2'], labels: ['I_control (mA)', 'I_main (A)'],
+  title: 'Control trickle vs main channel current'
 });
 
-const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Angle (rad)', 'Angular vel', 'Phase']);
+const met = UI.metrics(document.getElementById('metrics-wrap'), ['I_control (mA)', 'I_main (A)', 'Gain']);
 
+let t_sim = 0;
 function draw() {
-  if (!state.paused) {
-    t++;
-    const phase = Math.floor(t / commutePeriod) % 2;
-    const torque = phase === 0 ? pushStrength : -pushStrength;
-    const drag = -0.5 * angVel;
-    angVel += (torque + drag) * 0.016;
-    angle += angVel * 0.016;
+  const dt = 0.016;
+  t += dt;
 
-    plot.push(0, angVel);
-    plot.push(1, phase === 0 ? 1 : -1);
-    met.update([angle.toFixed(2), angVel, phase === 0 ? 1 : -1]);
+  if (!state.paused) {
+    if (blinking) {
+      blinkT += dt;
+      const sq = Math.sin(blinkT * Math.PI * 2) > 0 ? MAX_CTRL : 0;
+      ctrlSlider_update(sq);
+    }
+
+    const on = iControl >= THRESHOLD;
+    // Simple model: below threshold → off; above → proportional with gain
+    const saturationFrac = Math.min((iControl - THRESHOLD) / (MAX_CTRL - THRESHOLD), 1);
+    const iMain = on ? Math.min(iControl * GAIN / 1000, MAIN_VOLTAGE / R_LOAD) : 0;
+    const realGain = iControl > 0 ? (iMain * 1000 / iControl).toFixed(0) : '—';
+
+    plot.push(0, iControl);
+    plot.push(1, iMain);
+    met.update([iControl, iMain, realGain]);
+
+    t_sim = t;
   }
+
+  // Compute for drawing (no side-effects)
+  const on = iControl >= THRESHOLD;
+  const iMain = on ? Math.min(iControl * GAIN / 1000, MAIN_VOLTAGE / R_LOAD) : 0;
+  const bright = Math.min(iMain / (MAIN_VOLTAGE / R_LOAD), 1);
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const cx = 300, cy = 120, R = 55;
-  // stator ring
-  ctx.strokeStyle = '#bbb'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(cx, cy, R + 8, 0, Math.PI * 2); ctx.stroke();
-  // rotor
-  ctx.fillStyle = '#1976d2';
-  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
-  // rotor arm
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(cx, cy);
-  ctx.lineTo(cx + (R - 4) * Math.cos(angle), cy + (R - 4) * Math.sin(angle));
-  ctx.stroke();
 
-  // phase arrows
-  const phase = Math.floor(t / commutePeriod) % 2;
-  const arrowColor = phase === 0 ? '#4caf50' : '#e53935';
-  for (let i = 0; i < 4; i++) {
-    const a = i * Math.PI / 2;
-    const ox = cx + Math.cos(a) * (R + 8);
-    const oy = cy + Math.sin(a) * (R + 8);
-    const dir = phase === 0 ? 1 : -1;
-    const tx = ox + Math.cos(a + Math.PI / 2) * dir * 12;
-    const ty = oy + Math.sin(a + Math.PI / 2) * dir * 12;
-    drawArrow(ctx, { x: ox, y: oy }, { x: tx, y: ty }, arrowColor);
+  // ── Main power rail (top) ──────────────────────────────────────────────
+  // Source → collector path → lamp → return
+  const railY = 60;
+  const loadX = 420;
+  const transX = 260;
+  const transY = 120;
+
+  // Source
+  ctx.fillStyle = '#e3f2fd'; ctx.fillRect(20, railY - 22, 55, 44);
+  ctx.strokeStyle = '#1565c0'; ctx.lineWidth = 2; ctx.strokeRect(20, railY - 22, 55, 44);
+  ctx.fillStyle = '#333'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('MAIN', 47, railY - 5);
+  ctx.fillStyle = '#1565c0'; ctx.fillText(MAIN_VOLTAGE + 'V', 47, railY + 10);
+
+  // Rail: source → transistor collector
+  ctx.strokeStyle = '#1976d2'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(75, railY); ctx.lineTo(transX, railY); ctx.lineTo(transX, transY - 20); ctx.stroke();
+
+  // Transistor box
+  const txW = 60, txH = 40;
+  const gateOn = on;
+  ctx.fillStyle = gateOn ? '#e8f5e9' : '#fafafa';
+  ctx.fillRect(transX - txW / 2, transY - 20, txW, txH);
+  ctx.strokeStyle = gateOn ? '#388e3c' : '#aaa'; ctx.lineWidth = 2;
+  ctx.strokeRect(transX - txW / 2, transY - 20, txW, txH);
+  ctx.fillStyle = '#333'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('NPN', transX, transY - 5);
+  ctx.fillStyle = gateOn ? '#388e3c' : '#999'; ctx.font = '8px sans-serif';
+  ctx.fillText(gateOn ? 'ON' : 'OFF', transX, transY + 8);
+
+  // Collector → lamp
+  ctx.strokeStyle = gateOn ? '#1976d2' : '#aaa'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(transX + txW / 2, transY); ctx.lineTo(loadX, transY); ctx.stroke();
+
+  // Lamp
+  if (bright > 0.05) {
+    const grad = ctx.createRadialGradient(loadX + 15, transY, 0, loadX + 15, transY, 12 + bright * 30);
+    grad.addColorStop(0, 'rgba(255,235,59,0.9)');
+    grad.addColorStop(1, 'rgba(255,235,59,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(loadX + 15, transY, 12 + bright * 30, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = bright > 0.1 ? '#f9a825' : '#ccc';
+  ctx.beginPath(); ctx.arc(loadX + 15, transY, 12, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(loadX + 15, transY, 12, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('LOAD', loadX + 15, transY + 25);
+
+  // Return rail
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(loadX + 27, transY); ctx.lineTo(530, transY); ctx.lineTo(530, 195); ctx.lineTo(47, 195); ctx.lineTo(47, railY + 22); ctx.stroke();
+  // Emitter to ground
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(transX, transY + 20); ctx.lineTo(transX, 195); ctx.stroke();
+
+  // ── Control path (base) ───────────────────────────────────────────────
+  const ctrlY = 160;
+  ctx.fillStyle = '#fff3e0'; ctx.fillRect(20, ctrlY - 18, 55, 36);
+  ctx.strokeStyle = '#f57c00'; ctx.lineWidth = 2; ctx.strokeRect(20, ctrlY - 18, 55, 36);
+  ctx.fillStyle = '#333'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('CTRL', 47, ctrlY - 4);
+  ctx.fillStyle = '#e64a19'; ctx.fillText(iControl.toFixed(2) + 'mA', 47, ctrlY + 10);
+
+  // Control wire to base
+  ctx.strokeStyle = '#ff9800'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(75, ctrlY); ctx.lineTo(transX - txW / 2 - 8, ctrlY);
+  ctx.lineTo(transX - txW / 2 - 8, transY); ctx.lineTo(transX - txW / 2, transY); ctx.stroke();
+
+  // Arrow indicating tiny control
+  ctx.fillStyle = '#ff9800'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('tiny →', 85, ctrlY - 4);
+
+  // Main flow dots when on
+  if (iMain > 0) {
+    const dotSpeed = iMain * 20;
+    const phase = (t * dotSpeed * 8) % 340;
+    ctx.fillStyle = '#1976d2';
+    for (let i = 0; i < 3; i++) {
+      const pos = (i * 113 + phase) % 340;
+      // Approximate path: 0-160 horizontal, 160-340 with corner
+      let dx, dy;
+      if (pos < 160) { dx = 80 + pos; dy = railY; }
+      else if (pos < 200) { dx = transX; dy = railY + (pos - 160); }
+      else { dx = transX + (pos - 200) * 1.1; dy = transY; }
+      ctx.beginPath(); ctx.arc(dx, dy, 3, 0, Math.PI * 2); ctx.fill();
+    }
   }
 
-  ctx.fillStyle = '#333'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText('Phase: ' + (phase === 0 ? 'A' : 'B') + '   Commutation keeps rotation continuous', 8, 20);
+  // Control dots (small, slow)
+  if (iControl > 0) {
+    const phase2 = (t * 3) % 100;
+    ctx.fillStyle = '#ff9800';
+    for (let i = 0; i < 2; i++) {
+      const x = 80 + ((i * 50 + phase2) % 100);
+      ctx.beginPath(); ctx.arc(x, ctrlY, 2, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // Threshold annotation
+  ctx.fillStyle = iControl >= THRESHOLD ? '#388e3c' : '#e53935';
+  ctx.font = '10px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('threshold: ' + THRESHOLD + ' mA', 310, 200);
+  ctx.fillText(iControl >= THRESHOLD ? '▲ above → transistor ON' : '▼ below → transistor OFF', 310, 215);
 
   requestAnimationFrame(draw);
 }

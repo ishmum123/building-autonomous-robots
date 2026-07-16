@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 26: Why Four Motors Beat One</title>
+<title>Chapter 26: Why Gyroscopes Drift</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -11,8 +11,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 26: Why Four Motors Beat One</h1>
-<p class="key">One motor produces lift but also torque that spins the body. Four motors can balance torques while still generating net lift.</p>
+<h1>Chapter 26: Why Gyroscopes Drift</h1>
+<p class="key">Integrating a biased noisy rate accumulates error over time. Left side shows raw integration (drifts); right shows truth for comparison.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,83 +20,75 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-let thrustLevel = 9.8;
+let bias = 0.005, noiseStd = 0.01, trueRate = 0.05;
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Single motor (spins)', 'Balanced motors (stable)', 280, 220);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Gyro estimate (drifts)', 'True angle', 280, 200);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
-let qA, qB;
+let trueAngle, estAngle, gyro;
 function initState() {
-  qA = new Quadcopter(1.0);
-  qA.body.pos = new Vec(140, 120); qA.body.angle = 0;
-  qB = new Quadcopter(1.0);
-  qB.body.pos = new Vec(140, 120); qB.body.angle = 0;
+  trueAngle = 0; estAngle = 0;
+  gyro = new Gyroscope(noiseStd, bias);
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Thrust', 5, 20, 0.5, thrustLevel, v => { thrustLevel = v; });
+UI.slider(cp, 'Gyro bias', 0, 0.02, 0.001, bias, v => { bias = v; gyro.bias = v; });
+UI.slider(cp, 'Noise std', 0, 0.05, 0.002, noiseStd, v => { noiseStd = v; gyro.noiseStd = v; });
+UI.slider(cp, 'True rate', -0.2, 0.2, 0.01, trueRate, v => { trueRate = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
   width: 580, height: 120, window: 400,
-  colors: ['#ff9800', '#1976d2'],
-  labels: ['single motor spin°', 'balanced tilt°'],
-  title: 'Body angle: single motor vs balanced four motors'
+  colors: ['#e53935', '#4caf50'],
+  labels: ['gyro angle (drift)', 'true angle'],
+  title: 'Angle over time: gyro integration vs truth'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Single tilt°', 'Single alt', 'Balanced tilt°', 'Balanced alt']);
+  ['True angle°', 'Gyro est°', 'Drift°', 'Bias']);
 
-function r2d(r) { return (r * 180 / Math.PI).toFixed(1); }
+const DT = 0.016;
+const mockBody = { angularVel: trueRate };
 
-function drawQuad(c, cx, q, label, motorL, motorR) {
+function drawAngleIndicator(c, cx, angle, label, color) {
   cx.clearRect(0, 0, c.width, c.height);
-  // hover target line
-  cx.strokeStyle = '#4caf5055'; cx.setLineDash([4, 4]);
-  cx.beginPath(); cx.moveTo(0, 80); cx.lineTo(c.width, 80); cx.stroke();
-  cx.setLineDash([]);
-  const bx = q.body.pos.x, by = q.body.pos.y, ang = q.body.angle;
-  cx.save();
-  cx.translate(bx, by);
-  cx.rotate(ang);
-  cx.fillStyle = q.body.color;
-  cx.fillRect(-22, -5, 44, 10);
-  // motor arrows
-  const scaleT = 3;
-  drawArrow(cx, { x: -18, y: 0 }, { x: -18, y: -motorL * scaleT }, '#4caf50');
-  drawArrow(cx, { x: 18, y: 0 }, { x: 18, y: -motorR * scaleT }, '#4caf50');
-  cx.restore();
+  const cx2 = c.width / 2, cy2 = c.height / 2;
+  const R = 60;
+  // dial background
+  cx.strokeStyle = '#ddd'; cx.lineWidth = 2;
+  cx.beginPath(); cx.arc(cx2, cy2, R, 0, Math.PI * 2); cx.stroke();
+  // needle
+  cx.strokeStyle = color; cx.lineWidth = 3;
+  cx.beginPath();
+  cx.moveTo(cx2, cy2);
+  cx.lineTo(cx2 + R * Math.sin(angle), cy2 - R * Math.cos(angle));
+  cx.stroke();
+  // tick at 0
+  cx.strokeStyle = '#aaa'; cx.lineWidth = 1;
+  cx.beginPath(); cx.moveTo(cx2, cy2 - R - 4); cx.lineTo(cx2, cy2 - R + 4); cx.stroke();
   cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
   cx.fillText(label, 4, 16);
-  cx.fillText('tilt=' + r2d(ang) + '°  alt=' + by.toFixed(0), 4, 30);
+  cx.fillText((angle * 180 / Math.PI).toFixed(1) + '°', 4, 30);
 }
 
 function draw() {
   if (!state.paused) {
-    // single motor: only left motor runs
-    qA.body.clearForces();
-    qA.body.addForce(new Vec(0, -qA.body.mass * 9.81));
-    qA.setMotors(thrustLevel, 0);
-    qA.step(0.016);
-    qA.body.pos.x = Math.max(30, Math.min(250, qA.body.pos.x));
-    qA.body.pos.y = Math.max(20, Math.min(200, qA.body.pos.y));
-
-    // balanced: both motors equal
-    qB.body.clearForces();
-    qB.body.addForce(new Vec(0, -qB.body.mass * 9.81));
-    qB.setMotors(thrustLevel / 2, thrustLevel / 2);
-    qB.step(0.016);
-    qB.body.pos.x = Math.max(30, Math.min(250, qB.body.pos.x));
-    qB.body.pos.y = Math.max(20, Math.min(200, qB.body.pos.y));
-
-    plot.push(0, qA.body.angle * 180 / Math.PI);
-    plot.push(1, qB.body.angle * 180 / Math.PI);
-    met.update([r2d(qA.body.angle), qA.body.pos.y, r2d(qB.body.angle), qB.body.pos.y]);
+    mockBody.angularVel = trueRate;
+    trueAngle += trueRate * DT;
+    estAngle += gyro.read(mockBody) * DT;
+    plot.push(0, estAngle * 180 / Math.PI);
+    plot.push(1, trueAngle * 180 / Math.PI);
+    met.update([
+      (trueAngle * 180 / Math.PI),
+      (estAngle * 180 / Math.PI),
+      ((estAngle - trueAngle) * 180 / Math.PI),
+      bias
+    ]);
   }
-  drawQuad(canvasA, ctxA, qA, 'Single motor (torque)', thrustLevel, 0);
-  drawQuad(canvasB, ctxB, qB, 'Balanced motors', thrustLevel / 2, thrustLevel / 2);
+  drawAngleIndicator(canvasA, ctxA, estAngle % (2 * Math.PI), 'Gyro estimate (drifts)', '#e53935');
+  drawAngleIndicator(canvasB, ctxB, trueAngle % (2 * Math.PI), 'Truth', '#4caf50');
   requestAnimationFrame(draw);
 }
 draw();

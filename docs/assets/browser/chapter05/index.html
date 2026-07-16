@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 05: Why Copper Becomes a Magnet</title>
+<title>Chapter 05: Why You Need a Gate</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -12,10 +12,10 @@
 </style>
 </head>
 <body>
-<h1>Chapter 05: Why Copper Becomes a Magnet</h1>
-<p class="key">Electric current through a coil creates a magnetic field — strength scales with current and turns.</p>
+<h1>Chapter 05: Why You Need a Gate</h1>
+<p class="key">A switch decides when; a diode decides which way.</p>
 <div id="controls"></div>
-<canvas id="sim" width="600" height="230"></canvas>
+<canvas id="sim" width="600" height="240"></canvas>
 <div id="plot-wrap"></div>
 <div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
@@ -24,68 +24,180 @@
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
 
-let currentLevel = 2, turns = 100;
-let coil, nail;
+let switchClosed = false;
+let polarity = 1;   // +1 = forward, -1 = reverse
+let t = 0;
+let sparkAlpha = 0; // flash on opening under load
+let wasOn = false;
 
 function initState() {
-  coil = new Body('coil', 150, 115, { mass: 999, radius: 22, color: '#ff9800' });
-  nail = new Body('nail', 500, 115, { mass: 0.3, radius: 7, color: '#607d8b' });
+  switchClosed = false; polarity = 1; sparkAlpha = 0; wasOn = false; t = 0;
+  switchBtn.textContent = 'Switch: OPEN';
+  switchBtn.classList.remove('active');
+  polBtn.textContent = 'Polarity: FORWARD';
+  polBtn.classList.remove('active');
 }
-initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Current', 0, 5, 0.1, currentLevel, v => { currentLevel = v; });
-UI.slider(cp, 'Turns', 10, 300, 10, turns, v => { turns = v; });
+const switchBtn = UI.button(cp, 'Switch: OPEN', () => {
+  const prevOn = switchClosed && polarity === 1;
+  switchClosed = !switchClosed;
+  switchBtn.textContent = 'Switch: ' + (switchClosed ? 'CLOSED' : 'OPEN');
+  switchBtn.classList.toggle('active', switchClosed);
+  // Spark on opening under load
+  if (prevOn && !switchClosed) sparkAlpha = 1.0;
+  plot.clear();
+});
+const polBtn = UI.button(cp, 'Polarity: FORWARD', () => {
+  polarity = -polarity;
+  polBtn.textContent = 'Polarity: ' + (polarity === 1 ? 'FORWARD' : 'REVERSE');
+  polBtn.classList.toggle('active', polarity === -1);
+  plot.clear();
+});
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
   width: 600, height: 100, window: 300,
-  colors: ['#607d8b', '#ff9800'], labels: ['nail distance', 'I × N'],
-  title: 'Nail distance & Coil field strength (I × N)'
+  colors: ['#1976d2'], labels: ['current (A)'],
+  title: 'Circuit current over time'
 });
 
-const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Distance', 'I×N', 'Nail speed']);
+const met = UI.metrics(document.getElementById('metrics-wrap'), ['Switch', 'Polarity', 'Current (A)']);
+
+const voltage = 9;
+const R_lamp = 15;
 
 function draw() {
-  if (!state.paused) {
-    const fieldStrength = currentLevel * turns;
-    if (currentLevel > 0) {
-      const delta = coil.pos.sub(nail.pos);
-      const dist = Math.max(delta.length(), 20);
-      const force = delta.div(dist).mul(fieldStrength * 20 / (dist * dist) * 500);
-      nail.clearForces();
-      nail.addForce(force);
-    } else {
-      nail.clearForces();
-    }
-    nail.step(0.016);
-    if (nail.pos.x < coil.pos.x + coil.radius + nail.radius) {
-      nail.pos.x = coil.pos.x + coil.radius + nail.radius;
-      nail.vel.x = Math.abs(nail.vel.x) * 0.2;
-    }
-    if (nail.pos.x > canvas.width - 10) { nail.pos.x = canvas.width - 10; nail.vel.x *= -0.4; }
+  const dt = 0.016;
+  t += dt;
 
-    const dist = coil.pos.sub(nail.pos).length();
-    plot.push(0, dist);
-    plot.push(1, fieldStrength);
-    met.update([dist, fieldStrength, nail.vel.x]);
+  // Diode: only allows forward polarity
+  const diodePass = polarity === 1;
+  const current = (switchClosed && diodePass) ? voltage / R_lamp : 0;
+  const bright = Math.min(current / (voltage / R_lamp), 1);
+
+  if (!state.paused) {
+    if (sparkAlpha > 0) sparkAlpha -= dt * 4;
+    if (sparkAlpha < 0) sparkAlpha = 0;
+    plot.push(0, current);
+    met.update([switchClosed ? 'CLOSED' : 'OPEN', polarity === 1 ? 'FWD' : 'REV', current.toFixed(2)]);
   }
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const alpha = Math.min(currentLevel / 5, 1);
-  ctx.strokeStyle = 'rgba(255,152,0,' + (alpha * 0.5) + ')';
-  ctx.lineWidth = 1;
-  for (let r = 30; r <= 160; r += 30) {
-    ctx.beginPath(); ctx.arc(coil.pos.x, coil.pos.y, r, 0, Math.PI * 2); ctx.stroke();
+
+  // Layout: Source(30) → Switch(160) → Diode(310) → Lamp(450)
+  const topY = 100;
+
+  // Source
+  ctx.fillStyle = '#e8f5e9'; ctx.fillRect(20, topY - 25, 55, 50);
+  ctx.strokeStyle = '#388e3c'; ctx.lineWidth = 2; ctx.strokeRect(20, topY - 25, 55, 50);
+  ctx.fillStyle = '#333'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('SRC', 47, topY - 5);
+  const srcLabel = polarity === 1 ? '+9V' : '-9V';
+  ctx.fillStyle = polarity === 1 ? '#1565c0' : '#e53935';
+  ctx.fillText(srcLabel, 47, topY + 10);
+
+  // Wire source → switch
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(75, topY); ctx.lineTo(145, topY); ctx.stroke();
+
+  // Switch
+  const swX = 155, swY = topY;
+  if (switchClosed) {
+    ctx.strokeStyle = '#388e3c'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(swX, swY); ctx.lineTo(swX + 50, swY); ctx.stroke();
+    ctx.fillStyle = '#388e3c'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('CLOSED', swX + 25, swY - 10);
+  } else {
+    // Open gap with animated spark
+    ctx.strokeStyle = '#555'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(swX, swY); ctx.lineTo(swX + 18, swY); ctx.stroke();
+    // pivoting arm open
+    ctx.beginPath(); ctx.moveTo(swX + 18, swY); ctx.lineTo(swX + 35, swY - 18); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(swX + 38, swY); ctx.lineTo(swX + 50, swY); ctx.stroke();
+    ctx.fillStyle = '#888'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('OPEN', swX + 25, swY - 25);
+
+    // Spark flash
+    if (sparkAlpha > 0) {
+      ctx.globalAlpha = sparkAlpha;
+      ctx.strokeStyle = '#ff9800'; ctx.lineWidth = 2;
+      for (let i = 0; i < 5; i++) {
+        const sx = swX + 18 + Math.random() * 20;
+        const sy = swY + (Math.random() - 0.5) * 16;
+        ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + (Math.random()-0.5)*8, sy + (Math.random()-0.5)*8); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
   }
-  drawBody(ctx, coil);
-  drawBody(ctx, nail);
-  ctx.fillStyle = '#333'; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('Coil (electromagnet)', coil.pos.x, coil.pos.y - 36);
-  ctx.fillStyle = currentLevel > 0 ? '#e65100' : '#aaa';
-  ctx.fillText(currentLevel > 0 ? 'Field ON' : 'Field OFF (I=0)', coil.pos.x, coil.pos.y - 22);
+
+  // Wire switch → diode
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(swX + 50, topY); ctx.lineTo(280, topY); ctx.stroke();
+
+  // Diode symbol at x=290
+  const dX = 290;
+  // Triangle body
+  ctx.fillStyle = polarity === 1 ? '#1976d2' : '#aaa';
+  ctx.strokeStyle = polarity === 1 ? '#1565c0' : '#999';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(dX, topY - 14);
+  ctx.lineTo(dX + 24, topY);
+  ctx.lineTo(dX, topY + 14);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  // Bar
+  ctx.beginPath(); ctx.moveTo(dX + 24, topY - 14); ctx.lineTo(dX + 24, topY + 14); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('DIODE', dX + 12, topY - 20);
+  if (polarity === -1) {
+    ctx.fillStyle = '#e53935'; ctx.font = '8px sans-serif';
+    ctx.fillText('BLOCKED', dX + 12, topY + 28);
+  }
+
+  // Wire diode → lamp
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(dX + 24, topY); ctx.lineTo(410, topY); ctx.stroke();
+
+  // Lamp
+  const lampX = 430, lampY = topY;
+  if (bright > 0.05) {
+    const grad = ctx.createRadialGradient(lampX, lampY, 0, lampX, lampY, 12 + bright * 28);
+    grad.addColorStop(0, 'rgba(255,235,59,0.9)');
+    grad.addColorStop(1, 'rgba(255,235,59,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(lampX, lampY, 12 + bright * 28, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = bright > 0.1 ? '#f9a825' : '#ccc';
+  ctx.beginPath(); ctx.arc(lampX, lampY, 12, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(lampX, lampY, 12, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('LAMP', lampX, lampY + 28);
+
+  // Return wire
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(lampX + 12, lampY); ctx.lineTo(540, topY); ctx.lineTo(540, 195); ctx.lineTo(47, 195); ctx.lineTo(47, topY + 25); ctx.stroke();
+
+  // Flow dots when current flows
+  if (current > 0) {
+    const dotSpeed = current * 12;
+    const phase = (t * dotSpeed * 20) % 350;
+    ctx.fillStyle = '#ff9800';
+    for (let i = 0; i < 4; i++) {
+      const x = 80 + ((i * 87 + phase) % 345);
+      if (x < 418) {
+        ctx.beginPath(); ctx.arc(x, topY, 3, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  // Status line
+  const status = !switchClosed ? 'Switch open — no current' : !diodePass ? 'Diode blocks reverse polarity' : 'Current flows — lamp ON';
+  const sColor = current > 0 ? '#388e3c' : '#e53935';
+  ctx.fillStyle = sColor; ctx.font = '12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(status, 300, 225);
 
   requestAnimationFrame(draw);
 }

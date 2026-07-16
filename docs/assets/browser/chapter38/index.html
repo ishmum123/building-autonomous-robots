@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 38: Why Robots Change Their Mind</title>
+<title>Chapter 38: Why Dead Reckoning Fails</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -11,8 +11,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 38: Why Robots Change Their Mind</h1>
-<p class="key">A stubborn robot follows its original plan into a newly-blocked cell. A replanning robot detours around it.</p>
+<h1>Chapter 38: Why Dead Reckoning Fails</h1>
+<p class="key">Integrating noisy velocity accumulates unbounded error. GPS corrections reset it.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,89 +20,69 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-const CELL = 32, COLS = 10, ROWS = 10, OX = 8, OY = 8;
-const START = [0, 0], GOAL = [9, 9];
-let obstFrame = 120;
-let t, gridA, gridB, origPath, replanPath, stepA, stepB, blockedA;
+let velNoise = 0.08, trueVel = 1.2;
+let trueX, drX, gpsX, gpsTimer, t;
 
 function initState() {
-  t = 0; stepA = 0; stepB = 0; blockedA = false;
-  gridA = new Grid(COLS, ROWS);
-  gridB = new Grid(COLS, ROWS);
-  origPath = astar(gridA, START, GOAL);
-  replanPath = origPath ? [...origPath] : null;
+  t = 0; trueX = 20; drX = 20; gpsX = 20; gpsTimer = 0;
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Obstacle appears (frame)', 30, 250, 10, obstFrame, v => { obstFrame = v; });
+UI.slider(cp, 'Vel noise σ', 0.01, 0.3, 0.01, velNoise, v => { velNoise = v; });
+UI.slider(cp, 'True vel', 0.5, 3, 0.1, trueVel, v => { trueVel = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Stubborn (no replan)', 'Replanning robot', 336, 336);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Dead reckoning (no GPS)', 'GPS-corrected estimate', 280, 200);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 580, height: 100, window: 300,
-  colors: ['#e53935', '#1976d2'],
-  labels: ['stubborn step', 'replan step'],
-  title: 'Progress toward goal (higher = further along)'
+  width: 580, height: 110, window: 300,
+  colors: ['#e53935', '#1976d2', '#4caf50'],
+  labels: ['DR error', 'GPS error', 'zero'],
+  title: 'Position error over time'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Frame', 'Stubborn pos', 'Replan pos', 'Replanned?']);
+  ['True X', 'DR X', 'GPS X', 'DR error']);
 
-let replanned = false;
+const GPS_RATE = 60;
 
-function drawSide(cx, cv, grid, path, step, label) {
+function drawTrack(cv, cx, pos, color, label) {
   cx.clearRect(0, 0, cv.width, cv.height);
-  drawGrid(cx, grid, { cell: CELL, ox: OX, oy: OY });
-  if (path) drawGridPath(cx, path, { cell: CELL, ox: OX, oy: OY });
-  drawPoint(cx, OX + START[0]*CELL+CELL/2, OY + START[1]*CELL+CELL/2, '#4caf50', 7);
-  drawPoint(cx, OX + GOAL[0]*CELL+CELL/2, OY + GOAL[1]*CELL+CELL/2, '#ff9800', 7);
-  if (path && step < path.length) {
-    const [px, py] = path[step];
-    drawPoint(cx, OX + px*CELL+CELL/2, OY + py*CELL+CELL/2, '#1976d2', 7);
-  }
+  cx.fillStyle = '#e8e8e8'; cx.fillRect(0, 80, cv.width, 40);
+  const tx = Math.min(trueX % cv.width, cv.width - 5);
+  const px = Math.min(pos % cv.width, cv.width - 5);
+  drawPoint(cx, tx, 100, '#4caf50', 7);
+  drawPoint(cx, px, 100, color, 5);
+  const err = pos - trueX;
   cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
-  cx.fillText(label, 4, 8);
+  cx.fillText(label, 4, 15);
+  cx.fillText('err=' + err.toFixed(1), 4, 28);
 }
 
 function draw() {
   if (!state.paused) {
     t++;
-    // spawn obstacle at obstFrame
-    if (t === obstFrame) {
-      // block a cell near middle of path
-      const mid = origPath ? Math.floor(origPath.length * 0.55) : 5;
-      if (origPath && mid < origPath.length) {
-        const [ox, oy] = origPath[mid];
-        gridA.block(ox, oy);
-        gridB.block(ox, oy);
-        // stubborn: keeps old path; replan: recalculates
-        const curPos = replanPath && stepB < replanPath.length ? replanPath[stepB] : START;
-        replanPath = astar(gridB, curPos, GOAL);
-        stepB = 0;
-        replanned = true;
-      }
+    const noisyVel = addNoise(trueVel, velNoise);
+    trueX += trueVel;
+    drX += noisyVel;
+    gpsX += noisyVel;
+    gpsTimer++;
+    if (gpsTimer >= GPS_RATE) {
+      gpsX = addNoise(trueX, 1.5);
+      gpsTimer = 0;
     }
+    if (trueX > 1200) { trueX = 20; drX = 20; gpsX = 20; }
 
-    if (t % 6 === 0) {
-      // stubborn: keep going, detect collision
-      if (origPath && stepA < origPath.length - 1) {
-        const next = origPath[stepA + 1];
-        if (gridA.isBlocked(next[0], next[1])) { blockedA = true; }
-        else if (!blockedA) stepA++;
-      }
-      if (replanPath && stepB < replanPath.length - 1) stepB++;
-    }
-
-    plot.push(0, stepA);
-    plot.push(1, stepB);
-    met.update([t, stepA, stepB, replanned ? 'YES' : 'no']);
+    plot.push(0, drX - trueX);
+    plot.push(1, gpsX - trueX);
+    plot.push(2, 0);
+    met.update([trueX.toFixed(1), drX.toFixed(1), gpsX.toFixed(1), (drX - trueX).toFixed(2)]);
   }
-  drawSide(ctxA, canvasA, gridA, origPath, stepA, blockedA ? 'STUCK at new obstacle' : 'Stubborn step ' + stepA);
-  drawSide(ctxB, canvasB, gridB, replanPath, stepB, replanned ? 'Replanned! step ' + stepB : 'Step ' + stepB);
+  drawTrack(canvasA, ctxA, drX, '#e53935', 'Dead reckoning (red)');
+  drawTrack(canvasB, ctxB, gpsX, '#1976d2', 'GPS-corrected (blue)');
   requestAnimationFrame(draw);
 }
 draw();

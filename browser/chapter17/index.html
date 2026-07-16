@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 17: Why One PID Isn't Enough</title>
+<title>Chapter 17: Why Everything Oscillates</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -11,8 +11,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 17: Why One PID Isn't Enough</h1>
-<p class="key">A single PID on position fights both axes at once and fails. Cascaded PIDs handle altitude and lateral separately at their own time scales.</p>
+<h1>Chapter 17: Why Everything Oscillates</h1>
+<p class="key">Energy trades between spring (storage) and mass (motion). Damping determines whether it oscillates, decays, or creeps.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,88 +20,87 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-const TGT_X = 220, TGT_Y = 80;
-let kpAlt = 4.0, kpPos = 1.5;
+// Three modes in A/B: left=underdamped, right=overdamped. Slider chooses damping.
+const ANCHOR_X = 140;
+let k = 10, cUnder = 0.5, cOver = 8;
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Single PID (fails)', 'Cascaded PIDs', 280, 220);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Underdamped (oscillates)', 'Overdamped (creeps)', 285, 220);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
-let droneA, droneB, pidSingle, pidAlt, pidLat;
+let massU, massO;
 function initState() {
-  droneA = new Body('A', 30, 190, { mass: 1, radius: 12, color: '#ff9800' });
-  droneB = new Body('B', 30, 190, { mass: 1, radius: 12, color: '#1976d2' });
-  // single PID tries to minimize combined distance — naive
-  pidSingle = new PID(kpPos, 0.05, 0.5, TGT_X);
-  // separate altitude and lateral controllers
-  pidAlt = new PID(kpAlt, 0.15, 1.0, TGT_Y);
-  pidLat = new PID(kpPos, 0.05, 0.5, TGT_X);
+  massU = new Body('U', ANCHOR_X + 80, 110, { mass: 1, radius: 12, color: '#1976d2' });
+  massO = new Body('O', ANCHOR_X + 80, 110, { mass: 1, radius: 12, color: '#e53935' });
+  massU.vel = new Vec(0, 0);
+  massO.vel = new Vec(0, 0);
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Alt Kp', 1, 8, 0.5, kpAlt, v => { kpAlt = v; pidAlt.kp = v; });
-UI.slider(cp, 'Lat Kp', 0.5, 4, 0.1, kpPos, v => { kpPos = v; pidLat.kp = v; pidSingle.kp = v; });
+UI.slider(cp, 'Spring k', 1, 30, 0.5, k, v => { k = v; });
+UI.slider(cp, 'Under-damp c', 0, 3, 0.1, cUnder, v => { cUnder = v; });
+UI.slider(cp, 'Over-damp c', 3, 20, 0.5, cOver, v => { cOver = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 580, height: 120, window: 400,
-  colors: ['#ff9800', '#1976d2'],
-  labels: ['single PID err', 'cascade err'],
-  title: 'Distance to target: single PID vs cascaded'
+  width: 580, height: 120, window: 500,
+  colors: ['#1976d2', '#e53935'], labels: ['underdamped displacement', 'overdamped displacement'],
+  title: 'Displacement vs time — underdamped vs overdamped'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Single dist', 'Cascade dist', 'Alt err', 'Lat err']);
+  ['Under disp', 'Over disp', 'Under vel', 'Over vel']);
 
-const GRAV = 9.81;
-
-function stepDroneA(d) {
-  d.clearForces();
-  const u = pidSingle.update(d.pos.x, 0.016);
-  d.addForce(new Vec(u, -d.mass * GRAV + 9.81)); // constant thrust barely fights gravity
-  d.addForce(d.vel.mul(-2));
-  d.step(0.016);
-  d.pos.x = Math.max(0, Math.min(270, d.pos.x));
-  d.pos.y = Math.max(0, Math.min(210, d.pos.y));
+function stepMass(mass, c) {
+  const disp = mass.pos.x - ANCHOR_X;
+  const spring = -k * disp;
+  const damp = -c * mass.vel.x;
+  mass.clearForces();
+  mass.addForce(new Vec(spring + damp, 0));
+  mass.step(0.016);
 }
 
-function stepDroneB(d) {
-  d.clearForces();
-  const fY = -pidAlt.update(d.pos.y, 0.016);
-  const fX = pidLat.update(d.pos.x, 0.016);
-  d.addForce(new Vec(fX, fY - d.mass * GRAV));
-  d.addForce(d.vel.mul(-2));
-  d.step(0.016);
-  d.pos.x = Math.max(0, Math.min(270, d.pos.x));
-  d.pos.y = Math.max(0, Math.min(210, d.pos.y));
-}
+function drawSpringMass(c_ctx, cw, ch, mass, c, color, label) {
+  c_ctx.clearRect(0, 0, cw, ch);
+  // spring (zigzag)
+  const ax = 10, ay = ch / 2 - 10;
+  const mx = mass.pos.x, my = ch / 2 - 10;
+  const segs = 12;
+  c_ctx.strokeStyle = '#aaa'; c_ctx.lineWidth = 1.5;
+  c_ctx.beginPath(); c_ctx.moveTo(ax, ay);
+  for (let i = 0; i <= segs; i++) {
+    const px = ax + (mx - ax) * i / segs;
+    const py = ay + (i % 2 === 0 ? 0 : (i % 4 === 1 ? -10 : 10));
+    c_ctx.lineTo(px, py);
+  }
+  c_ctx.lineTo(mx, my);
+  c_ctx.stroke();
+  // wall
+  c_ctx.fillStyle = '#795548'; c_ctx.fillRect(0, ay - 20, 8, 40);
+  // anchor dot
+  drawPoint(c_ctx, ANCHOR_X, ch / 2 - 10, '#555', 3);
+  // equilibrium line
+  c_ctx.strokeStyle = '#ddd'; c_ctx.setLineDash([4, 4]);
+  c_ctx.beginPath(); c_ctx.moveTo(ANCHOR_X, 0); c_ctx.lineTo(ANCHOR_X, ch); c_ctx.stroke();
+  c_ctx.setLineDash([]);
 
-function dist(d) { return Math.hypot(d.pos.x - TGT_X, d.pos.y - TGT_Y); }
-
-function drawDrone(c, cx, d, label) {
-  cx.clearRect(0, 0, c.width, c.height);
-  drawPoint(cx, TGT_X, TGT_Y, '#4caf50', 7);
-  cx.strokeStyle = '#4caf50'; cx.setLineDash([4, 4]);
-  cx.beginPath(); cx.moveTo(TGT_X, 0); cx.lineTo(TGT_X, c.height); cx.stroke();
-  cx.beginPath(); cx.moveTo(0, TGT_Y); cx.lineTo(c.width, TGT_Y); cx.stroke();
-  cx.setLineDash([]);
-  drawBody(cx, d);
-  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
-  cx.fillText(label, 4, 16);
-  cx.fillText('dist=' + dist(d).toFixed(1), 4, 30);
+  c_ctx.fillStyle = color; c_ctx.beginPath(); c_ctx.arc(mx, my, 12, 0, Math.PI * 2); c_ctx.fill();
+  c_ctx.fillStyle = '#333'; c_ctx.font = '11px sans-serif'; c_ctx.textAlign = 'left';
+  c_ctx.fillText(label + ' c=' + c.toFixed(1), 4, 16);
+  c_ctx.fillText('disp=' + (mass.pos.x - ANCHOR_X).toFixed(1), 4, 30);
 }
 
 function draw() {
   if (!state.paused) {
-    stepDroneA(droneA);
-    stepDroneB(droneB);
-    plot.push(0, dist(droneA));
-    plot.push(1, dist(droneB));
-    met.update([dist(droneA), dist(droneB), droneB.pos.y - TGT_Y, droneB.pos.x - TGT_X]);
+    stepMass(massU, cUnder);
+    stepMass(massO, cOver);
+    plot.push(0, massU.pos.x - ANCHOR_X);
+    plot.push(1, massO.pos.x - ANCHOR_X);
+    met.update([massU.pos.x - ANCHOR_X, massO.pos.x - ANCHOR_X, massU.vel.x, massO.vel.x]);
   }
-  drawDrone(canvasA, ctxA, droneA, 'Single PID');
-  drawDrone(canvasB, ctxB, droneB, 'Cascaded (alt+lat)');
+  drawSpringMass(ctxA, canvasA.width, canvasA.height, massU, cUnder, '#1976d2', 'Under');
+  drawSpringMass(ctxB, canvasB.width, canvasB.height, massO, cOver, '#e53935', 'Over');
   requestAnimationFrame(draw);
 }
 draw();

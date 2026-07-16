@@ -2,20 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 01: Why Wheels Move</title>
+<title>Chapter 01: Why You'd Want This Power</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 600px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .key { color: #555; max-width: 640px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
-<h1>Chapter 01: Why Wheels Move</h1>
-<p class="key">A wheel only moves when force, friction, and a constraint work together.</p>
+<h1>Chapter 01: Why You'd Want This Power</h1>
+<p class="key">Electricity is measured by two handles — push (voltage) and flow (current); together they are power.</p>
 <div id="controls"></div>
-<canvas id="sim" width="600" height="220"></canvas>
+<canvas id="sim" width="600" height="240"></canvas>
 <div id="plot-wrap"></div>
 <div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
@@ -23,59 +23,148 @@
 <script>
 const canvas = document.getElementById('sim');
 const ctx = canvas.getContext('2d');
-const groundY = 180;
 
-let force = 80, friction = 8;
+// Device resistances (ohms, simplified fixed)
+const R = { Motor: 10, Heater: 20, Lamp: 30 };
+let voltage = 6;
+let device = 'Motor';
 
-// State — extracted so reset is easy
-let wheel, target;
+// Motor: body weight lifted
+let weightY = 200;
+
 function initState() {
-  wheel = new Body('wheel', 50, groundY - 20, { mass: 1, radius: 20, color: '#1976d2' });
-  target = new Body('target', 520, groundY - 5, { mass: 1, radius: 5, color: '#4caf50' });
+  weightY = 200;
 }
 initState();
 
-// Controls
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Force', 0, 200, 1, force, v => { force = v; });
-UI.slider(cp, 'Friction', 0, 20, 0.5, friction, v => { friction = v; });
+UI.slider(cp, 'Voltage (V)', 0, 12, 0.5, voltage, v => { voltage = v; });
+const btns = {};
+['Motor', 'Heater', 'Lamp'].forEach(d => {
+  btns[d] = UI.button(cp, d, () => { device = d; initState(); plot.clear(); });
+});
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
-// Strip plot
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 600, height: 100, window: 400,
-  colors: ['#1976d2', '#ff9800'], labels: ['speed (px/s)', 'force (N)'],
-  title: 'Speed & Applied Force over time'
+  width: 600, height: 100, window: 300,
+  colors: ['#ff9800'], labels: ['power (W)'],
+  title: 'Power over time'
 });
 
-// Metrics
-const met = UI.metrics(document.getElementById('metrics-wrap'), ['Speed', 'Position', 'Force']);
+const met = UI.metrics(document.getElementById('metrics-wrap'), ['V', 'I (A)', 'P (W)']);
 
+let t = 0;
 function draw() {
+  t += 0.016;
+  const current = voltage / R[device];
+  const power = voltage * current;
+
   if (!state.paused) {
-    wheel.clearForces();
-    wheel.addForce(new Vec(force, 0));
-    wheel.addForce(wheel.vel.mul(-friction));
-    // clamp to canvas
-    if (wheel.pos.x > canvas.width + 20) wheel.pos.x = -20;
-    wheel.step(0.016);
-    plot.push(0, wheel.vel.x);
-    plot.push(1, force - friction * wheel.vel.x);
-    met.update([wheel.vel.x, wheel.pos.x, force]);
+    if (device === 'Motor') {
+      weightY -= power * 0.04;
+      if (weightY < 40) weightY = 200;
+    }
+    plot.push(0, power);
+    met.update([voltage, current, power]);
   }
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#8d6e63';
-  ctx.fillRect(0, groundY, canvas.width, canvas.height - groundY);
-  drawBody(ctx, wheel);
-  drawBody(ctx, target);
-  drawArrow(ctx,
-    { x: wheel.pos.x - 28, y: wheel.pos.y },
-    { x: wheel.pos.x + 28, y: wheel.pos.y },
-    '#ff9800');
-  ctx.fillStyle = '#333'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText(`F=${force}N  drag=${friction}`, 8, 16);
+
+  // Source box
+  ctx.fillStyle = '#e8f5e9';
+  ctx.fillRect(20, 90, 60, 60);
+  ctx.strokeStyle = '#388e3c'; ctx.lineWidth = 2;
+  ctx.strokeRect(20, 90, 60, 60);
+  ctx.fillStyle = '#333'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('SOURCE', 50, 118);
+  ctx.fillStyle = '#1565c0';
+  ctx.fillText(voltage.toFixed(1) + 'V', 50, 134);
+
+  // Wire lines
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(80, 120); ctx.lineTo(180, 120); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(420, 120); ctx.lineTo(520, 120); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(520, 120); ctx.lineTo(520, 200); ctx.lineTo(50, 200); ctx.lineTo(50, 150); ctx.stroke();
+
+  // Flow dots
+  const speed = Math.max(0, current * 15);
+  const dotPhase = (t * speed) % 60;
+  ctx.fillStyle = '#ff9800';
+  for (let i = 0; i < 4; i++) {
+    const x = 80 + ((i * 60 + dotPhase) % 140);
+    ctx.beginPath(); ctx.arc(x + 40, 120, 3, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Device box
+  if (device === 'Motor') {
+    // Draw pulley + weight
+    ctx.fillStyle = '#e3f2fd';
+    ctx.fillRect(190, 60, 220, 120);
+    ctx.strokeStyle = '#1976d2'; ctx.lineWidth = 2;
+    ctx.strokeRect(190, 60, 220, 120);
+    ctx.fillStyle = '#333'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('MOTOR', 300, 85);
+    // Pulley
+    ctx.beginPath(); ctx.arc(300, 100, 15, 0, Math.PI * 2);
+    ctx.strokeStyle = '#1976d2'; ctx.fillStyle = '#90caf9'; ctx.fill(); ctx.stroke();
+    // String
+    ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(300, 115); ctx.lineTo(300, Math.min(weightY, 170)); ctx.stroke();
+    // Weight
+    const wy = Math.min(weightY, 165);
+    ctx.fillStyle = '#1976d2';
+    ctx.fillRect(285, wy, 30, 16);
+    ctx.fillStyle = '#fff'; ctx.font = '9px sans-serif';
+    ctx.fillText('load', 300, wy + 11);
+    // Power label
+    ctx.fillStyle = '#ff9800'; ctx.font = '11px sans-serif';
+    ctx.fillText('P=' + power.toFixed(1) + 'W → lifts load', 300, 170);
+
+  } else if (device === 'Heater') {
+    ctx.fillStyle = '#fff3e0';
+    ctx.fillRect(190, 60, 220, 120);
+    ctx.strokeStyle = '#e64a19'; ctx.lineWidth = 2;
+    ctx.strokeRect(190, 60, 220, 120);
+    ctx.fillStyle = '#333'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('HEATER', 300, 85);
+    // Heat element colour
+    const heatFrac = Math.min(power / 7.2, 1);  // max at 12V/20R = 7.2W
+    const r = Math.round(150 + 105 * heatFrac);
+    const g = Math.round(100 - 80 * heatFrac);
+    const b = 50;
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(230, 100, 140, 40);
+    ctx.strokeStyle = '#e64a19'; ctx.lineWidth = 1;
+    ctx.strokeRect(230, 100, 140, 40);
+    ctx.fillStyle = '#fff'; ctx.font = '11px sans-serif';
+    ctx.fillText('P=' + power.toFixed(1) + 'W', 300, 125);
+    ctx.fillStyle = '#e64a19'; ctx.font = '10px sans-serif';
+    ctx.fillText(heatFrac > 0.5 ? 'hot!' : 'warm', 300, 155);
+
+  } else {
+    // Lamp
+    ctx.fillStyle = '#fffde7';
+    ctx.fillRect(190, 60, 220, 120);
+    ctx.strokeStyle = '#f9a825'; ctx.lineWidth = 2;
+    ctx.strokeRect(190, 60, 220, 120);
+    ctx.fillStyle = '#333'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('LAMP', 300, 85);
+    // Glow circle
+    const glowR = 8 + power * 3;
+    const grad = ctx.createRadialGradient(300, 125, 0, 300, 125, glowR);
+    grad.addColorStop(0, 'rgba(255,235,59,0.95)');
+    grad.addColorStop(1, 'rgba(255,235,59,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(300, 125, glowR, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f9a825'; ctx.beginPath(); ctx.arc(300, 125, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#555'; ctx.font = '10px sans-serif';
+    ctx.fillText('glow ∝ P=' + power.toFixed(1) + 'W', 300, 158);
+  }
+
+  // Ampere label on wire
+  ctx.fillStyle = '#555'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('I = ' + current.toFixed(2) + 'A', 240, 112);
 
   requestAnimationFrame(draw);
 }

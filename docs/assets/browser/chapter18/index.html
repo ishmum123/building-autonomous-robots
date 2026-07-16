@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 18: Why Quadcopters Need Two Brains</title>
+<title>Chapter 18: Why Feedback Changes Everything</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -11,8 +11,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 18: Why Quadcopters Need Two Brains</h1>
-<p class="key">Attitude (tilt) and altitude (height) are separate but coupled. The fast inner attitude loop must run inside the slower outer position loop.</p>
+<h1>Chapter 18: Why Feedback Changes Everything</h1>
+<p class="key">Without feedback an open-loop system drifts; with feedback it corrects. Both receive the same disturbance.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,93 +20,84 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-const HOV_Y = 80;
-let kpAtt = 3.0, kpAlt = 5.0;
+const TARGET = 240;
+let kp = 1.0, distStrength = 30;
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Altitude only (no att ctrl)', 'Two-loop (att + alt)', 280, 220);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Open-loop (no feedback)', 'Closed-loop (feedback)', 285, 200);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
-let qA, qB, altA, altB, attB;
+let openPlant, closedPlant, pid, t;
 function initState() {
-  qA = new Quadcopter(1.0);
-  qA.body.pos = new Vec(140, 200); qA.body.angle = 0.3;
-  qB = new Quadcopter(1.0);
-  qB.body.pos = new Vec(140, 200); qB.body.angle = 0.3;
-  altA = new PID(kpAlt, 0.1, 1.0, HOV_Y);
-  altB = new PID(kpAlt, 0.1, 1.0, HOV_Y);
-  attB = new PID(kpAtt, 0, 0.8, 0);
+  openPlant   = new Body('open',   30, 100, { mass: 1, radius: 12, color: '#ff9800' });
+  closedPlant = new Body('closed', 30, 100, { mass: 1, radius: 12, color: '#1976d2' });
+  pid = new PID(kp, 0.1, 0.4, TARGET);
+  t = 0;
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Attitude Kp', 0.5, 8, 0.5, kpAtt, v => { kpAtt = v; attB.kp = v; });
-UI.slider(cp, 'Altitude Kp', 1, 10, 0.5, kpAlt, v => { kpAlt = v; altA.kp = v; altB.kp = v; });
+UI.slider(cp, 'Kp', 0.2, 4, 0.1, kp, v => { kp = v; pid.kp = v; });
+UI.slider(cp, 'Disturbance', 0, 80, 2, distStrength, v => { distStrength = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 580, height: 120, window: 400,
-  colors: ['#ff9800', '#1976d2', '#e53935'],
-  labels: ['no att: tilt', 'two-loop: tilt', 'target 0'],
-  title: 'Attitude angle over time'
+  width: 580, height: 110, window: 400,
+  colors: ['#ff9800', '#1976d2'], labels: ['open-loop pos', 'closed-loop pos'],
+  title: 'Position under same disturbance: open-loop vs closed-loop'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['No-att tilt°', 'Two-loop tilt°', 'Alt err A', 'Alt err B']);
+  ['Open pos', 'Closed pos', 'Open err', 'Closed err']);
 
-function r2d(r) { return (r * 180 / Math.PI).toFixed(1); }
-
-function stepA(q, altPid) {
-  const thrust = -altPid.update(q.body.pos.y, 0.016);
-  q.setMotors(thrust, thrust);
-  q.body.addForce(new Vec(0, -q.body.mass * 9.81));
-  q.step(0.016);
-  q.body.pos.x = Math.max(20, Math.min(260, q.body.pos.x));
-  q.body.pos.y = Math.max(10, Math.min(210, q.body.pos.y));
+// disturbance: a periodic sidewind
+function disturbance(t) {
+  return distStrength * (Math.sin(t * 0.05) > 0.5 ? 1 : 0);
 }
 
-function stepB(q, altPid, attPid) {
-  const baseThrust = -altPid.update(q.body.pos.y, 0.016);
-  const torqueCmd  = attPid.update(q.body.angle, 0.016);
-  q.setMotors(baseThrust - torqueCmd, baseThrust + torqueCmd);
-  q.body.addForce(new Vec(0, -q.body.mass * 9.81));
-  q.step(0.016);
-  q.body.pos.x = Math.max(20, Math.min(260, q.body.pos.x));
-  q.body.pos.y = Math.max(10, Math.min(210, q.body.pos.y));
-}
-
-function drawQuad(c, cx, q, label) {
-  cx.clearRect(0, 0, c.width, c.height);
-  cx.strokeStyle = '#4caf50'; cx.setLineDash([4, 4]);
-  cx.beginPath(); cx.moveTo(0, HOV_Y); cx.lineTo(c.width, HOV_Y); cx.stroke();
-  cx.setLineDash([]);
-  // draw body as rectangle to show tilt
-  const bx = q.body.pos.x, by = q.body.pos.y, ang = q.body.angle;
-  cx.save();
-  cx.translate(bx, by);
-  cx.rotate(ang);
-  cx.fillStyle = q.body.color;
-  cx.fillRect(-20, -6, 40, 12);
-  cx.fillStyle = '#fff';
-  cx.fillRect(-2, -8, 4, 16);
-  cx.restore();
-  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
-  cx.fillText(label, 4, 16);
-  cx.fillText('tilt=' + r2d(q.body.angle) + '°', 4, 30);
-  cx.fillText('alt=' + q.body.pos.y.toFixed(0), 4, 44);
+function drawPlant(c_ctx, cw, ch, plant, targetX, label, color) {
+  c_ctx.clearRect(0, 0, cw, ch);
+  c_ctx.strokeStyle = '#ddd'; c_ctx.setLineDash([4, 4]);
+  c_ctx.beginPath(); c_ctx.moveTo(targetX, 0); c_ctx.lineTo(targetX, ch); c_ctx.stroke();
+  c_ctx.setLineDash([]);
+  drawBody(c_ctx, plant);
+  c_ctx.fillStyle = '#4caf50'; c_ctx.beginPath(); c_ctx.arc(targetX, ch / 2, 5, 0, Math.PI * 2); c_ctx.fill();
+  const err = Math.abs(plant.pos.x - targetX);
+  c_ctx.fillStyle = err < 5 ? '#4caf50' : '#e53935';
+  c_ctx.fillRect(plant.pos.x, ch / 2 - 4, plant.pos.x < targetX ? err : -err, 3);
+  c_ctx.fillStyle = '#333'; c_ctx.font = '11px sans-serif'; c_ctx.textAlign = 'left';
+  c_ctx.fillText(label, 4, 16);
+  c_ctx.fillText('err=' + (plant.pos.x - targetX).toFixed(1), 4, 30);
 }
 
 function draw() {
   if (!state.paused) {
-    stepA(qA, altA);
-    stepB(qB, altB, attB);
-    plot.push(0, qA.body.angle);
-    plot.push(1, qB.body.angle);
-    plot.push(2, 0);
-    met.update([r2d(qA.body.angle), r2d(qB.body.angle), qA.body.pos.y - HOV_Y, qB.body.pos.y - HOV_Y]);
+    t++;
+    const d = disturbance(t);
+
+    // Open loop: fixed force, no measurement
+    openPlant.clearForces();
+    openPlant.addForce(new Vec(20, 0));         // fixed command
+    openPlant.addForce(new Vec(d, 0));           // unmeasured disturbance
+    openPlant.addForce(openPlant.vel.mul(-1));
+    openPlant.step(0.016);
+    if (openPlant.pos.x > 270) { openPlant.pos.x = 270; openPlant.vel.x = 0; }
+
+    // Closed loop: feedback corrects
+    closedPlant.clearForces();
+    closedPlant.addForce(new Vec(pid.update(closedPlant.pos.x, 0.016), 0));
+    closedPlant.addForce(new Vec(d, 0));         // same disturbance
+    closedPlant.addForce(closedPlant.vel.mul(-1));
+    closedPlant.step(0.016);
+    if (closedPlant.pos.x > 270) { closedPlant.pos.x = 270; closedPlant.vel.x *= -0.5; }
+    if (closedPlant.pos.x < 0) { closedPlant.pos.x = 0; closedPlant.vel.x = 0; }
+
+    plot.push(0, openPlant.pos.x);
+    plot.push(1, closedPlant.pos.x);
+    met.update([openPlant.pos.x, closedPlant.pos.x, openPlant.pos.x - TARGET, closedPlant.pos.x - TARGET]);
   }
-  drawQuad(canvasA, ctxA, qA, 'Alt loop only');
-  drawQuad(canvasB, ctxB, qB, 'Att + Alt loops');
+  drawPlant(ctxA, canvasA.width, canvasA.height, openPlant, TARGET, 'Open-loop', '#ff9800');
+  drawPlant(ctxB, canvasB.width, canvasB.height, closedPlant, TARGET, 'Closed-loop (Kp=' + kp.toFixed(1) + ')', '#1976d2');
   requestAnimationFrame(draw);
 }
 draw();

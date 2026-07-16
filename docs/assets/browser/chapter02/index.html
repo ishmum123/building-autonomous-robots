@@ -2,87 +2,157 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 02: Why Things Refuse to Move</title>
+<title>Chapter 02: Why It Needs a Path</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 680px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .key { color: #555; max-width: 640px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
-<h1>Chapter 02: Why Things Refuse to Move</h1>
-<p class="key">Objects resist changes in velocity — inertia scales with mass. Same force, different mass, different result.</p>
+<h1>Chapter 02: Why It Needs a Path</h1>
+<p class="key">It takes any path it can — guide it with a conductor, wall it with an insulator.</p>
 <div id="controls"></div>
-<div id="ab-wrap"></div>
+<canvas id="sim" width="600" height="240"></canvas>
 <div id="plot-wrap"></div>
 <div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-const groundY = 190;
-let pushForce = 50;
+const canvas = document.getElementById('sim');
+const ctx = canvas.getContext('2d');
 
-// A/B side by side: light crate vs heavy crate
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Light (mass=1)', 'Heavy (mass=10)', 290, 220);
-const { canvasA, ctxA, canvasB, ctxB } = ab;
+// Conductance: copper ~high, wood ~zero
+const conductance = { copper: 1.0, wood: 0.001 };
+let wireMaterial = 'copper';
+let insulated = false;
+let voltage = 9;
+let t = 0;
 
-let lightCrate, heavyCrate;
-function initState() {
-  lightCrate = new Body('light', 50, groundY - 20, { mass: 1,  radius: 20, color: '#1976d2' });
-  heavyCrate = new Body('heavy', 50, groundY - 20, { mass: 10, radius: 20, color: '#795548' });
-}
+function initState() { t = 0; }
 initState();
 
-// Controls
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Push force', 0, 200, 5, pushForce, v => { pushForce = v; });
+UI.slider(cp, 'Voltage (V)', 1, 12, 0.5, voltage, v => { voltage = v; });
+const wireBtn = UI.button(cp, 'Wire: copper', () => {
+  wireMaterial = wireMaterial === 'copper' ? 'wood' : 'copper';
+  wireBtn.textContent = 'Wire: ' + wireMaterial;
+  plot.clear();
+});
+const insBtn = UI.button(cp, 'Insulation: OFF', () => {
+  insulated = !insulated;
+  insBtn.textContent = 'Insulation: ' + (insulated ? 'ON' : 'OFF');
+  insBtn.classList.toggle('active', insulated);
+  plot.clear();
+});
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
-// Strip plot
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 590, height: 100, window: 400,
-  colors: ['#1976d2', '#795548'], labels: ['light speed', 'heavy speed'],
-  title: 'Speed comparison (same force, different mass)'
+  width: 600, height: 100, window: 300,
+  colors: ['#f9a825', '#e53935'], labels: ['lamp current (mA)', 'leak current (mA)'],
+  title: 'Lamp vs leak current over time'
 });
 
-const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Light speed', 'Heavy speed', 'Force']);
+const met = UI.metrics(document.getElementById('metrics-wrap'), ['I_lamp (mA)', 'I_leak (mA)', 'Lamp brightness']);
 
-function drawCrate(c, c_ctx, cw) {
-  c_ctx.clearRect(0, 0, cw, 220);
-  c_ctx.fillStyle = '#8d6e63';
-  c_ctx.fillRect(0, groundY, cw, 220 - groundY);
-  c_ctx.fillStyle = c.color;
-  const half = c.radius;
-  c_ctx.fillRect(c.pos.x - half, c.pos.y - half, half * 2, half * 2);
-  drawArrow(c_ctx,
-    { x: c.pos.x - half - 10, y: c.pos.y },
-    { x: c.pos.x + half + 10, y: c.pos.y },
-    '#ff9800');
-  c_ctx.fillStyle = '#333'; c_ctx.font = '11px sans-serif'; c_ctx.textAlign = 'left';
-  c_ctx.fillText('v=' + c.vel.x.toFixed(2) + ' px/s', 4, 16);
-}
+// Circuit: source → main wire (your conductor) → lamp.
+// Leak path: parallel branch with conductance depending on insulation.
+const R_lamp = 100;        // ohms
+const G_wire = () => conductance[wireMaterial] * 20;  // main path conductance
+const G_leak = () => insulated ? 0 : 0.8;              // leak to ground
 
 function draw() {
+  t += 0.016;
+  const gw = G_wire();
+  const gl = G_leak();
+  // Parallel conductances share the voltage
+  const I_lamp = voltage * gw / (R_lamp * gw + 1) * 1000;  // simplified mA
+  const I_leak = voltage * gl * 10;  // mA
+  const lampBright = Math.min(I_lamp / 90, 1);
+
   if (!state.paused) {
-    lightCrate.clearForces();
-    lightCrate.addForce(new Vec(pushForce, 0));
-    lightCrate.step(0.016);
-    if (lightCrate.pos.x > canvasA.width + 30) lightCrate.pos.x = -30;
-
-    heavyCrate.clearForces();
-    heavyCrate.addForce(new Vec(pushForce, 0));
-    heavyCrate.step(0.016);
-    if (heavyCrate.pos.x > canvasB.width + 30) heavyCrate.pos.x = -30;
-
-    plot.push(0, lightCrate.vel.x);
-    plot.push(1, heavyCrate.vel.x);
-    met.update([lightCrate.vel.x, heavyCrate.vel.x, pushForce]);
+    plot.push(0, I_lamp);
+    plot.push(1, I_leak);
+    met.update([I_lamp, I_leak, (lampBright * 100).toFixed(0) + '%']);
   }
-  drawCrate(lightCrate, ctxA, canvasA.width);
-  drawCrate(heavyCrate, ctxB, canvasB.width);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Source
+  ctx.fillStyle = '#e8f5e9';
+  ctx.fillRect(20, 90, 60, 60);
+  ctx.strokeStyle = '#388e3c'; ctx.lineWidth = 2; ctx.strokeRect(20, 90, 60, 60);
+  ctx.fillStyle = '#333'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('SOURCE', 50, 115);
+  ctx.fillStyle = '#1565c0'; ctx.fillText(voltage.toFixed(1) + 'V', 50, 130);
+
+  // Main wire (top path)
+  const wireColor = wireMaterial === 'copper' ? '#ff9800' : '#8d6e63';
+  ctx.strokeStyle = wireColor; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(80, 100); ctx.lineTo(420, 100); ctx.stroke();
+  ctx.fillStyle = wireColor; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(wireMaterial, 250, 92);
+
+  // Lamp
+  const glow = lampBright;
+  if (glow > 0.05) {
+    const grad = ctx.createRadialGradient(450, 120, 0, 450, 120, 8 + glow * 25);
+    grad.addColorStop(0, 'rgba(255,235,59,0.9)');
+    grad.addColorStop(1, 'rgba(255,235,59,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(450, 120, 8 + glow * 25, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = '#f9a825'; ctx.beginPath(); ctx.arc(450, 120, 10, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(450, 120, 10, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = '#333'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('LAMP', 450, 148);
+  ctx.beginPath(); ctx.moveTo(460, 120); ctx.lineTo(520, 120); ctx.lineTo(520, 200); ctx.lineTo(50, 200); ctx.lineTo(50, 150); ctx.stroke();
+  ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(80, 100); ctx.lineTo(80, 120); ctx.moveTo(420, 100); ctx.lineTo(440, 120); ctx.stroke();
+
+  // Leak path (bottom arc)
+  if (!insulated) {
+    ctx.strokeStyle = '#e53935'; ctx.lineWidth = 2; ctx.setLineDash([4, 4]);
+    ctx.beginPath(); ctx.moveTo(80, 100); ctx.bezierCurveTo(80, 175, 300, 200, 300, 175); ctx.stroke();
+    ctx.setLineDash([]);
+    // Ground symbol at bottom of leak
+    ctx.strokeStyle = '#e53935'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(300, 175); ctx.lineTo(300, 195); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(285, 195); ctx.lineTo(315, 195); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(290, 200); ctx.lineTo(310, 200); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(295, 205); ctx.lineTo(305, 205); ctx.stroke();
+    ctx.fillStyle = '#e53935'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('leak to ground', 300, 215);
+    // Leak dots
+    const lDotPhase = (t * Math.max(I_leak, 0) * 0.3) % 1;
+    ctx.fillStyle = '#e53935';
+    for (let i = 0; i < 3; i++) {
+      const frac = (lDotPhase + i / 3) % 1;
+      // Bezier point approximation
+      const bx = 80 + (300 - 80) * frac;
+      const by = 100 + 75 * Math.sin(frac * Math.PI);
+      ctx.beginPath(); ctx.arc(bx, by, 3, 0, Math.PI * 2); ctx.fill();
+    }
+  } else {
+    // Insulation shield
+    ctx.strokeStyle = '#4caf50'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(250, 100, 20, Math.PI * 0.6, Math.PI * 1.4); ctx.stroke();
+    ctx.fillStyle = '#4caf50'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('insulated', 250, 165);
+  }
+
+  // Flow dots on main wire
+  const dotSpeed = Math.max(I_lamp * 0.1, 0);
+  const dotPhase = (t * dotSpeed) % 80;
+  ctx.fillStyle = '#ff9800';
+  for (let i = 0; i < 4; i++) {
+    const x = 90 + ((i * 80 + dotPhase) % 320);
+    ctx.beginPath(); ctx.arc(x, 100, 3, 0, Math.PI * 2); ctx.fill();
+  }
+
   requestAnimationFrame(draw);
 }
 draw();

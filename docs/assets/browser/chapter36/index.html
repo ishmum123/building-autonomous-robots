@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 36: Why Planning Is Hard</title>
+<title>Chapter 36: Why Drones Crash</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -11,85 +11,84 @@
 </style>
 </head>
 <body>
-<h1>Chapter 36: Why Planning Is Hard</h1>
-<p class="key">Greedy straight-line navigation crashes into walls. A planner finds the safe detour.</p>
+<h1>Chapter 36: Why Drones Crash</h1>
+<p class="key">Stable controller holds altitude; a single motor failure causes unrecoverable spin and crash.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
+<div id="plot-wrap"></div>
 <div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-const CELL = 34, COLS = 12, ROWS = 8, OX = 8, OY = 16;
-const START = [0, 0], GOAL = [COLS-1, ROWS-1];
-let wallLen = 6;
-let grid, path, stepA, stepB, t, stuckA;
+const GND = 260, HOME_Y = 130;
+let kp = 4.0, ki = 0.1, kd = 1.0, failTime = 200;
 
-function buildGrid() {
-  grid = new Grid(COLS, ROWS);
-  for (let y = 0; y < wallLen; y++) grid.block(5, y);
-}
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Stable hover', 'Motor failure → crash', 280, 270);
+const { canvasA, ctxA, canvasB, ctxB } = ab;
 
+let qA, qB, pidA, pidB, t;
 function initState() {
-  t = 0; stepA = 0; stepB = 0; stuckA = false;
-  buildGrid();
-  path = astar(grid, START, GOAL);
+  t = 0;
+  qA = new Quadcopter(1.0);
+  qA.body.pos = new Vec(140, HOME_Y);
+  pidA = new PID(kp, ki, kd, HOME_Y);
+
+  qB = new Quadcopter(1.0);
+  qB.body.pos = new Vec(140, HOME_Y);
+  pidB = new PID(kp, ki, kd, HOME_Y);
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Wall length', 2, ROWS, 1, wallLen, v => { wallLen = v; initState(); });
-const { state } = UI.pauseResetBar(cp, initState);
+UI.slider(cp, 'Hover Kp', 1, 8, 0.5, kp, v => { kp = v; });
+UI.slider(cp, 'Fail at frame', 50, 400, 50, failTime, v => { failTime = v; });
+const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
+
+const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
+  width: 580, height: 110, window: 300,
+  colors: ['#1976d2', '#e53935'],
+  labels: ['stable Y', 'failing Y'],
+  title: 'Altitude over time (lower = falling)'
+});
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Greedy step', 'Planned step', 'Plan length', 'Greedy stuck?']);
+  ['Frame', 'Stable alt', 'Failing alt', 'Failure?']);
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Greedy (straight-line)', 'Planned (A*)', 418, 292);
-const { canvasA, ctxA, canvasB, ctxB } = ab;
-
-// Greedy walk: move toward goal, stop if blocked
-function greedyPos(step) {
-  let x = START[0], y = START[1];
-  for (let i = 0; i < step; i++) {
-    const gx = GOAL[0], gy = GOAL[1];
-    const dx = Math.sign(gx - x), dy = Math.sign(gy - y);
-    let moved = false;
-    for (const [nx, ny] of [[x+dx, y+dy],[x+dx,y],[x,y+dy]]) {
-      if (nx>=0&&nx<COLS&&ny>=0&&ny<ROWS&&!grid.isBlocked(nx,ny)) {
-        x=nx; y=ny; moved=true; break;
-      }
-    }
-    if (!moved) { stuckA = true; break; }
-  }
-  return [x, y];
+const G = 9.81;
+function stepQuad(q, pid, failed) {
+  const thr = -pid.update(q.body.pos.y, 0.016);
+  const lm = failed ? 0 : thr;
+  q.setMotors(lm, thr);
+  q.body.addForce(new Vec(0, q.body.mass * G));
+  q.step(0.016);
+  q.body.pos.x = Math.max(10, Math.min(270, q.body.pos.x));
+  q.body.pos.y = Math.max(10, Math.min(GND, q.body.pos.y));
 }
 
-function drawSide(cx, cv, robotCell, pathToDraw, label) {
+function drawQuad(cv, cx, q, label) {
   cx.clearRect(0, 0, cv.width, cv.height);
-  drawGrid(cx, grid, { cell: CELL, ox: OX, oy: OY });
-  if (pathToDraw) drawGridPath(cx, pathToDraw, { cell: CELL, ox: OX, oy: OY });
-  drawPoint(cx, OX + START[0]*CELL + CELL/2, OY + START[1]*CELL + CELL/2, '#4caf50', 7);
-  drawPoint(cx, OX + GOAL[0]*CELL + CELL/2, OY + GOAL[1]*CELL + CELL/2, '#ff9800', 7);
-  if (robotCell) drawPoint(cx, OX + robotCell[0]*CELL+CELL/2, OY + robotCell[1]*CELL+CELL/2, '#1976d2', 7);
-  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
-  cx.fillText(label, 4, 12);
+  cx.fillStyle = '#eee'; cx.fillRect(0, GND, cv.width, cv.height - GND);
+  cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 15);
+  cx.save(); cx.translate(q.body.pos.x, q.body.pos.y); cx.rotate(q.body.angle);
+  cx.fillStyle = q.body.color; cx.fillRect(-22, -5, 44, 10);
+  cx.restore();
+  drawPoint(cx, 140, HOME_Y, '#4caf50', 4);
 }
 
 function draw() {
   if (!state.paused) {
     t++;
-    if (t % 5 === 0) {
-      if (!stuckA) stepA++;
-      if (path && stepB < path.length - 1) stepB++;
-    }
-    const ga = greedyPos(stepA);
-    met.update([stepA, stepB, path ? path.length : '—', stuckA ? 'YES' : 'no']);
-    drawSide(ctxA, canvasA, greedyPos(stepA), null, stuckA ? 'STUCK at wall!' : 'Greedy step ' + stepA);
-    drawSide(ctxB, canvasB, path ? path[stepB] : null, path, 'Planned step ' + stepB);
-  } else {
-    drawSide(ctxA, canvasA, greedyPos(stepA), null, stuckA ? 'STUCK at wall!' : 'Greedy step ' + stepA);
-    drawSide(ctxB, canvasB, path ? path[stepB] : null, path, 'Planned step ' + stepB);
+    const failed = t >= failTime;
+    stepQuad(qA, pidA, false);
+    stepQuad(qB, pidB, failed);
+    plot.push(0, qA.body.pos.y);
+    plot.push(1, qB.body.pos.y);
+    met.update([t, qA.body.pos.y.toFixed(1), qB.body.pos.y.toFixed(1), failed ? 'YES' : 'no']);
   }
+  drawQuad(canvasA, ctxA, qA, 'Stable hover');
+  drawQuad(canvasB, ctxB, qB, t >= failTime ? 'LEFT MOTOR DEAD' : 'Normal');
   requestAnimationFrame(draw);
 }
 draw();

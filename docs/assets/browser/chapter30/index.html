@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 30: Why Autopilots Exist</title>
+<title>Chapter 30: Why Kalman Filters Exist</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -11,8 +11,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 30: Why Autopilots Exist</h1>
-<p class="key">A human can only update a command a few times per second. The fast inner autopilot stabilizes at ~100 Hz; the human sets coarse intent. Without autopilot even small gusts cause flipping.</p>
+<h1>Chapter 30: Why Kalman Filters Exist</h1>
+<p class="key">A noisy raw measurement lurches around truth. A Kalman filter maintains an uncertainty estimate and blends prediction + measurement optimally — smoother than either alone.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,111 +20,69 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-let humanRate = 10, kpAtt = 4.0, gustStrength = 15;
-let t = 0;
+let measNoise = 8, procNoise = 0.1;
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Human only (no autopilot)', 'Autopilot + human intent', 280, 220);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Raw measurement', 'Kalman estimate', 280, 200);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
-let qA, qB, autoPid, altA, altB;
+let truePos, kf, lastMeas, lastEst;
 function initState() {
-  t = 0;
-  qA = new Quadcopter(1.0);
-  qA.body.pos = new Vec(140, 110); qA.body.angle = 0;
-  qB = new Quadcopter(1.0);
-  qB.body.pos = new Vec(140, 110); qB.body.angle = 0;
-  autoPid = new PID(kpAtt, 0, 0.6, 0);
-  altA = new PID(3.0, 0.1, 0.6, 110);
-  altB = new PID(3.0, 0.1, 0.6, 110);
+  truePos = 50;
+  kf = new Kalman1D(procNoise, measNoise);
+  kf.x = 50;
+  lastMeas = 50; lastEst = 50;
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Human update rate (frames)', 5, 60, 5, humanRate, v => { humanRate = v; });
-UI.slider(cp, 'Autopilot Kp', 1, 8, 0.5, kpAtt, v => { kpAtt = v; autoPid.kp = v; });
-UI.slider(cp, 'Gust strength', 0, 40, 5, gustStrength, v => { gustStrength = v; });
+UI.slider(cp, 'Meas noise R', 1, 30, 1, measNoise, v => { measNoise = v; kf.r = v; });
+UI.slider(cp, 'Process noise Q', 0.01, 1, 0.01, procNoise, v => { procNoise = v; kf.q = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
   width: 580, height: 120, window: 400,
-  colors: ['#ff9800', '#1976d2'],
-  labels: ['human-only tilt°', 'autopilot tilt°'],
-  title: 'Attitude stability: human-only vs autopilot'
+  colors: ['#e53935', '#1976d2', '#4caf50'],
+  labels: ['raw meas', 'Kalman est', 'truth'],
+  title: 'Noisy measurement vs Kalman estimate vs truth'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Gust on?', 'Human tilt°', 'Auto tilt°', 'Gust frame']);
+  ['Truth', 'Raw meas', 'Kalman est', 'Kalman gain K']);
 
-const G = 9.81;
-const GUST_START = 100, GUST_END = 200;
-let humanCmdA = 9.5, humanCmdB = 9.5;
+const VEL = 0.8;
 
-function getGust(t) { return (t >= GUST_START && t <= GUST_END) ? gustStrength : 0; }
-
-function drawQuad(c, cx, q, label, gust) {
+function drawTrack(c, cx, val, label, color) {
   cx.clearRect(0, 0, c.width, c.height);
-  cx.strokeStyle = '#4caf5055'; cx.setLineDash([4, 4]);
-  cx.beginPath(); cx.moveTo(0, 110); cx.lineTo(c.width, 110); cx.stroke();
-  cx.setLineDash([]);
-  if (gust > 0) {
-    drawArrow(cx, { x: 10, y: 110 }, { x: 10 + gust * 1.5, y: 110 }, '#e53935');
-  }
-  const bx = Math.max(15, Math.min(265, q.body.pos.x));
-  const by = Math.max(15, Math.min(205, q.body.pos.y));
-  cx.save();
-  cx.translate(bx, by);
-  cx.rotate(q.body.angle);
-  cx.fillStyle = q.body.color;
-  cx.fillRect(-22, -5, 44, 10);
-  cx.restore();
+  cx.fillStyle = '#e8e8e8'; cx.fillRect(0, 75, c.width, 30);
+  drawPoint(cx, truePos % c.width, 90, '#4caf50', 8);
+  drawPoint(cx, val % c.width, 90, color, 6);
+  const err = val - truePos;
+  cx.fillStyle = Math.abs(err) < 3 ? '#4caf50' : '#e53935';
+  cx.fillRect(truePos % c.width, 86, Math.min(Math.max(err, -c.width), c.width), 4);
   cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
-  cx.fillText(label, 4, 16);
-  cx.fillText('tilt=' + (q.body.angle * 180 / Math.PI).toFixed(1) + '°', 4, 30);
+  cx.fillText(label, 4, 18);
+  cx.fillText('err=' + err.toFixed(1), 4, 32);
 }
 
 function draw() {
   if (!state.paused) {
-    t++;
-    const gust = getGust(t);
+    truePos += VEL;
+    if (truePos > 600) { truePos = 50; kf.x = 50; kf.p = 1; }
 
-    // human only: updates control at humanRate frames; no attitude correction between updates
-    if (t % humanRate === 0) {
-      const altCmdA = -altA.update(qA.body.pos.y, humanRate * 0.016);
-      humanCmdA = altCmdA;
-    }
-    qA.body.clearForces();
-    qA.body.addForce(new Vec(gust, -qA.body.mass * G));
-    qA.setMotors(humanCmdA / 2, humanCmdA / 2);
-    qA.body.addForce(qA.body.vel.mul(-0.3));
-    qA.step(0.016);
-    qA.body.pos.x = Math.max(10, Math.min(270, qA.body.pos.x));
-    qA.body.pos.y = Math.max(10, Math.min(210, qA.body.pos.y));
+    lastMeas = addNoise(truePos, measNoise);
+    kf.predict(1, VEL);
+    kf.update(lastMeas);
+    lastEst = kf.x;
+    const K = kf.p / (kf.p + kf.r);  // approximate gain display
 
-    // autopilot: inner loop runs every frame, outer intent updated at humanRate
-    if (t % humanRate === 0) {
-      const altCmdB = -altB.update(qB.body.pos.y, humanRate * 0.016);
-      humanCmdB = altCmdB;
-    }
-    const attCmd = autoPid.update(qB.body.angle, 0.016);
-    qB.body.clearForces();
-    qB.body.addForce(new Vec(gust, -qB.body.mass * G));
-    qB.setMotors(humanCmdB / 2 - attCmd, humanCmdB / 2 + attCmd);
-    qB.body.addForce(qB.body.vel.mul(-0.3));
-    qB.step(0.016);
-    qB.body.pos.x = Math.max(10, Math.min(270, qB.body.pos.x));
-    qB.body.pos.y = Math.max(10, Math.min(210, qB.body.pos.y));
-
-    plot.push(0, qA.body.angle * 180 / Math.PI);
-    plot.push(1, qB.body.angle * 180 / Math.PI);
-    met.update([gust > 0 ? 'YES' : 'no',
-      (qA.body.angle * 180 / Math.PI).toFixed(1),
-      (qB.body.angle * 180 / Math.PI).toFixed(1),
-      t >= GUST_START && t <= GUST_END ? (t - GUST_START) : '—']);
+    plot.push(0, lastMeas);
+    plot.push(1, lastEst);
+    plot.push(2, truePos);
+    met.update([truePos, lastMeas, lastEst, K]);
   }
-  const g = getGust(t);
-  drawQuad(canvasA, ctxA, qA, 'Human only (rate=' + humanRate + 'fr)', g);
-  drawQuad(canvasB, ctxB, qB, 'Autopilot Kp=' + kpAtt.toFixed(1), g);
+  drawTrack(canvasA, ctxA, lastMeas, 'Raw measurement (noise=' + measNoise + ')', '#e53935');
+  drawTrack(canvasB, ctxB, lastEst, 'Kalman estimate', '#1976d2');
   requestAnimationFrame(draw);
 }
 draw();

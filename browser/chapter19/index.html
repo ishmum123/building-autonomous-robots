@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 19: Why Robots Need Senses</title>
+<title>Chapter 19: Why Guessing Isn't Control</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -11,8 +11,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 19: Why Robots Need Senses</h1>
-<p class="key">Without sensors a robot drives open-loop into walls. With a range sensor it can stop and hold position near the obstacle.</p>
+<h1>Chapter 19: Why Guessing Isn't Control</h1>
+<p class="key">Same command, different result. Without measurement you cannot correct for what you cannot see.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,84 +20,80 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-const WALL_X = 250;
-let driveForce = 40, stopDist = 60;
+const TARGET = 240;
+let fixedForce = 25, distStrength = 20, kp = 1.5;
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Blind (no sensor)', 'Sighted (range sensor)', 280, 180);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Open-loop (guessing)', 'Closed-loop (measuring)', 285, 200);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
-let robotA, robotB, pidB;
+let guesser, measurer, pid, t;
 function initState() {
-  robotA = new Body('A', 20, 90, { mass: 1, radius: 12, color: '#ff9800' });
-  robotB = new Body('B', 20, 90, { mass: 1, radius: 12, color: '#1976d2' });
-  pidB = new PID(2.0, 0.1, 0.5, WALL_X - stopDist);
+  guesser  = new Body('g', 30, 100, { mass: 1, radius: 12, color: '#ff9800' });
+  measurer = new Body('m', 30, 100, { mass: 1, radius: 12, color: '#1976d2' });
+  pid = new PID(kp, 0.05, 0.3, TARGET);
+  t = 0;
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Drive force', 5, 80, 5, driveForce, v => { driveForce = v; });
-UI.slider(cp, 'Stop dist', 20, 100, 5, stopDist, v => { stopDist = v; pidB.setpoint = WALL_X - v; });
+UI.slider(cp, 'Fixed force', 5, 60, 1, fixedForce, v => { fixedForce = v; });
+UI.slider(cp, 'Disturbance', 0, 60, 2, distStrength, v => { distStrength = v; });
+UI.slider(cp, 'Kp (measurer)', 0.5, 5, 0.1, kp, v => { kp = v; pid.kp = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
   width: 580, height: 110, window: 400,
-  colors: ['#ff9800', '#1976d2'],
-  labels: ['blind pos', 'sighted pos'],
-  title: 'Robot position: blind vs sighted'
+  colors: ['#ff9800', '#1976d2'], labels: ['guesser error', 'measurer error'],
+  title: 'Position error over time: open-loop vs closed-loop'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Blind pos', 'Blind spd', 'Sighted pos', 'Range']);
+  ['Guesser pos', 'Measurer pos', 'Guesser err', 'Measurer err']);
 
-function drawRobot(c, cx, robot, label, crashed) {
-  cx.clearRect(0, 0, c.width, c.height);
-  // floor
-  cx.fillStyle = '#e0e0e0'; cx.fillRect(0, 115, c.width, 40);
-  // wall
-  cx.fillStyle = '#795548'; cx.fillRect(WALL_X, 60, 15, 90);
-  // stop-dist indicator (sighted side)
-  if (!crashed) {
-    cx.strokeStyle = '#1976d244'; cx.setLineDash([4, 4]);
-    cx.beginPath(); cx.moveTo(WALL_X - stopDist, 60); cx.lineTo(WALL_X - stopDist, 150); cx.stroke();
-    cx.setLineDash([]);
-  }
-  drawBody(cx, robot);
-  if (crashed) {
-    cx.fillStyle = '#e53935'; cx.font = 'bold 13px sans-serif'; cx.textAlign = 'center';
-    cx.fillText('CRASHED!', c.width / 2, 40);
-  }
-  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
-  cx.fillText(label, 4, 18);
-  cx.fillText('x=' + robot.pos.x.toFixed(0), 4, 32);
+// wind gust: active between t=150..350
+function gust(t) {
+  return (t > 150 && t < 350) ? -distStrength : 0;
 }
 
-let crashedA = false;
+function drawBot(c_ctx, cw, ch, plant, targetX, label, color) {
+  c_ctx.clearRect(0, 0, cw, ch);
+  c_ctx.strokeStyle = '#ddd'; c_ctx.setLineDash([4, 4]);
+  c_ctx.beginPath(); c_ctx.moveTo(targetX, 0); c_ctx.lineTo(targetX, ch); c_ctx.stroke();
+  c_ctx.setLineDash([]);
+  c_ctx.fillStyle = '#4caf50'; c_ctx.beginPath(); c_ctx.arc(targetX, ch / 2, 5, 0, Math.PI * 2); c_ctx.fill();
+  drawBody(c_ctx, plant);
+  c_ctx.fillStyle = '#333'; c_ctx.font = '11px sans-serif'; c_ctx.textAlign = 'left';
+  c_ctx.fillText(label, 4, 16);
+  c_ctx.fillText('pos=' + plant.pos.x.toFixed(0) + ' err=' + (plant.pos.x - targetX).toFixed(0), 4, 30);
+}
+
 function draw() {
   if (!state.paused) {
-    // blind: constant drive
-    if (!crashedA) {
-      robotA.clearForces();
-      robotA.addForce(new Vec(driveForce, 0));
-      robotA.addForce(robotA.vel.mul(-0.5));
-      robotA.step(0.016);
-      if (robotA.pos.x >= WALL_X - 12) { robotA.pos.x = WALL_X - 12; robotA.vel.x = 0; crashedA = true; }
-    }
-    // sighted: PID to stop-dist
-    robotB.clearForces();
-    pidB.setpoint = WALL_X - stopDist;
-    robotB.addForce(new Vec(pidB.update(robotB.pos.x, 0.016), 0));
-    robotB.addForce(robotB.vel.mul(-1));
-    robotB.step(0.016);
-    robotB.pos.x = Math.min(WALL_X - 13, robotB.pos.x);
+    t++;
+    const g = gust(t);
 
-    const range = WALL_X - robotB.pos.x;
-    plot.push(0, robotA.pos.x);
-    plot.push(1, robotB.pos.x);
-    met.update([robotA.pos.x, robotA.vel.x, robotB.pos.x, range]);
+    guesser.clearForces();
+    guesser.addForce(new Vec(fixedForce, 0));
+    guesser.addForce(new Vec(g, 0));
+    guesser.addForce(guesser.vel.mul(-1.5));
+    guesser.step(0.016);
+    if (guesser.pos.x > 270) { guesser.pos.x = 270; guesser.vel.x = 0; }
+
+    measurer.clearForces();
+    measurer.addForce(new Vec(pid.update(measurer.pos.x, 0.016), 0));
+    measurer.addForce(new Vec(g, 0));
+    measurer.addForce(measurer.vel.mul(-1.5));
+    measurer.step(0.016);
+    if (measurer.pos.x > 270) { measurer.pos.x = 270; measurer.vel.x = 0; }
+    if (measurer.pos.x < 0) { measurer.pos.x = 0; measurer.vel.x = 0; }
+
+    plot.push(0, guesser.pos.x - TARGET);
+    plot.push(1, measurer.pos.x - TARGET);
+    met.update([guesser.pos.x, measurer.pos.x, guesser.pos.x - TARGET, measurer.pos.x - TARGET]);
   }
-  drawRobot(canvasA, ctxA, robotA, 'Blind robot', crashedA);
-  drawRobot(canvasB, ctxB, robotB, 'Sighted (stop=' + stopDist + 'px)', false);
+  drawBot(ctxA, canvasA.width, canvasA.height, guesser, TARGET, 'Guesser (fixed cmd)', '#ff9800');
+  drawBot(ctxB, canvasB.width, canvasB.height, measurer, TARGET, 'Measurer (feedback)', '#1976d2');
   requestAnimationFrame(draw);
 }
 draw();

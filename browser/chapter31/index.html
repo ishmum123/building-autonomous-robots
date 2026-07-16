@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 31: Why Drones Crash</title>
+<title>Chapter 31: Why Four Motors Beat One</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
@@ -11,8 +11,8 @@
 </style>
 </head>
 <body>
-<h1>Chapter 31: Why Drones Crash</h1>
-<p class="key">Stable controller holds altitude; a single motor failure causes unrecoverable spin and crash.</p>
+<h1>Chapter 31: Why Four Motors Beat One</h1>
+<p class="key">One motor produces lift but also torque that spins the body. Four motors can balance torques while still generating net lift.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,75 +20,83 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-const GND = 260, HOME_Y = 130;
-let kp = 4.0, ki = 0.1, kd = 1.0, failTime = 200;
+let thrustLevel = 9.8;
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Stable hover', 'Motor failure → crash', 280, 270);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Single motor (spins)', 'Balanced motors (stable)', 280, 220);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
-let qA, qB, pidA, pidB, t;
+let qA, qB;
 function initState() {
-  t = 0;
   qA = new Quadcopter(1.0);
-  qA.body.pos = new Vec(140, HOME_Y);
-  pidA = new PID(kp, ki, kd, HOME_Y);
-
+  qA.body.pos = new Vec(140, 120); qA.body.angle = 0;
   qB = new Quadcopter(1.0);
-  qB.body.pos = new Vec(140, HOME_Y);
-  pidB = new PID(kp, ki, kd, HOME_Y);
+  qB.body.pos = new Vec(140, 120); qB.body.angle = 0;
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Hover Kp', 1, 8, 0.5, kp, v => { kp = v; });
-UI.slider(cp, 'Fail at frame', 50, 400, 50, failTime, v => { failTime = v; });
+UI.slider(cp, 'Thrust', 5, 20, 0.5, thrustLevel, v => { thrustLevel = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 580, height: 110, window: 300,
-  colors: ['#1976d2', '#e53935'],
-  labels: ['stable Y', 'failing Y'],
-  title: 'Altitude over time (lower = falling)'
+  width: 580, height: 120, window: 400,
+  colors: ['#ff9800', '#1976d2'],
+  labels: ['single motor spin°', 'balanced tilt°'],
+  title: 'Body angle: single motor vs balanced four motors'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Frame', 'Stable alt', 'Failing alt', 'Failure?']);
+  ['Single tilt°', 'Single alt', 'Balanced tilt°', 'Balanced alt']);
 
-const G = 9.81;
-function stepQuad(q, pid, failed) {
-  const thr = -pid.update(q.body.pos.y, 0.016);
-  const lm = failed ? 0 : thr;
-  q.setMotors(lm, thr);
-  q.body.addForce(new Vec(0, q.body.mass * G));
-  q.step(0.016);
-  q.body.pos.x = Math.max(10, Math.min(270, q.body.pos.x));
-  q.body.pos.y = Math.max(10, Math.min(GND, q.body.pos.y));
-}
+function r2d(r) { return (r * 180 / Math.PI).toFixed(1); }
 
-function drawQuad(cv, cx, q, label) {
-  cx.clearRect(0, 0, cv.width, cv.height);
-  cx.fillStyle = '#eee'; cx.fillRect(0, GND, cv.width, cv.height - GND);
-  cx.fillStyle = '#333'; cx.font = '10px sans-serif'; cx.textAlign = 'left';
-  cx.fillText(label, 4, 15);
-  cx.save(); cx.translate(q.body.pos.x, q.body.pos.y); cx.rotate(q.body.angle);
-  cx.fillStyle = q.body.color; cx.fillRect(-22, -5, 44, 10);
+function drawQuad(c, cx, q, label, motorL, motorR) {
+  cx.clearRect(0, 0, c.width, c.height);
+  // hover target line
+  cx.strokeStyle = '#4caf5055'; cx.setLineDash([4, 4]);
+  cx.beginPath(); cx.moveTo(0, 80); cx.lineTo(c.width, 80); cx.stroke();
+  cx.setLineDash([]);
+  const bx = q.body.pos.x, by = q.body.pos.y, ang = q.body.angle;
+  cx.save();
+  cx.translate(bx, by);
+  cx.rotate(ang);
+  cx.fillStyle = q.body.color;
+  cx.fillRect(-22, -5, 44, 10);
+  // motor arrows
+  const scaleT = 3;
+  drawArrow(cx, { x: -18, y: 0 }, { x: -18, y: -motorL * scaleT }, '#4caf50');
+  drawArrow(cx, { x: 18, y: 0 }, { x: 18, y: -motorR * scaleT }, '#4caf50');
   cx.restore();
-  drawPoint(cx, 140, HOME_Y, '#4caf50', 4);
+  cx.fillStyle = '#333'; cx.font = '11px sans-serif'; cx.textAlign = 'left';
+  cx.fillText(label, 4, 16);
+  cx.fillText('tilt=' + r2d(ang) + '°  alt=' + by.toFixed(0), 4, 30);
 }
 
 function draw() {
   if (!state.paused) {
-    t++;
-    const failed = t >= failTime;
-    stepQuad(qA, pidA, false);
-    stepQuad(qB, pidB, failed);
-    plot.push(0, qA.body.pos.y);
-    plot.push(1, qB.body.pos.y);
-    met.update([t, qA.body.pos.y.toFixed(1), qB.body.pos.y.toFixed(1), failed ? 'YES' : 'no']);
+    // single motor: only left motor runs
+    qA.body.clearForces();
+    qA.body.addForce(new Vec(0, -qA.body.mass * 9.81));
+    qA.setMotors(thrustLevel, 0);
+    qA.step(0.016);
+    qA.body.pos.x = Math.max(30, Math.min(250, qA.body.pos.x));
+    qA.body.pos.y = Math.max(20, Math.min(200, qA.body.pos.y));
+
+    // balanced: both motors equal
+    qB.body.clearForces();
+    qB.body.addForce(new Vec(0, -qB.body.mass * 9.81));
+    qB.setMotors(thrustLevel / 2, thrustLevel / 2);
+    qB.step(0.016);
+    qB.body.pos.x = Math.max(30, Math.min(250, qB.body.pos.x));
+    qB.body.pos.y = Math.max(20, Math.min(200, qB.body.pos.y));
+
+    plot.push(0, qA.body.angle * 180 / Math.PI);
+    plot.push(1, qB.body.angle * 180 / Math.PI);
+    met.update([r2d(qA.body.angle), qA.body.pos.y, r2d(qB.body.angle), qB.body.pos.y]);
   }
-  drawQuad(canvasA, ctxA, qA, 'Stable hover');
-  drawQuad(canvasB, ctxB, qB, t >= failTime ? 'LEFT MOTOR DEAD' : 'Normal');
+  drawQuad(canvasA, ctxA, qA, 'Single motor (torque)', thrustLevel, 0);
+  drawQuad(canvasB, ctxB, qB, 'Balanced motors', thrustLevel / 2, thrustLevel / 2);
   requestAnimationFrame(draw);
 }
 draw();

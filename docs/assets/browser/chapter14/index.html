@@ -2,17 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 14: Why Guessing Isn't Control</title>
+<title>Chapter 14: Why Brushes Had to Disappear</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .key { color: #555; max-width: 680px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
-<h1>Chapter 14: Why Guessing Isn't Control</h1>
-<p class="key">Same command, different result. Without measurement you cannot correct for what you cannot see.</p>
+<h1>Chapter 14: Why Brushes Had to Disappear</h1>
+<p class="key">Mechanical brushes wear and spark. Electronic commutation uses sector-based switching — zero moving contacts.</p>
 <div id="controls"></div>
 <div id="ab-wrap"></div>
 <div id="plot-wrap"></div>
@@ -20,80 +20,112 @@
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-const TARGET = 240;
-let fixedForce = 25, distStrength = 20, kp = 1.5;
+let torqueStrength = 5;
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Open-loop (guessing)', 'Closed-loop (measuring)', 285, 200);
+const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Brushed (wear accumulates)', 'Brushless (electronic)', 285, 240);
 const { canvasA, ctxA, canvasB, ctxB } = ab;
 
-let guesser, measurer, pid, t;
+let angleA, angVelA, wearA;
+let rotorB;
 function initState() {
-  guesser  = new Body('g', 30, 100, { mass: 1, radius: 12, color: '#ff9800' });
-  measurer = new Body('m', 30, 100, { mass: 1, radius: 12, color: '#1976d2' });
-  pid = new PID(kp, 0.05, 0.3, TARGET);
-  t = 0;
+  angleA = 0; angVelA = 0; wearA = 0;
+  rotorB = new Body('rotor', 142, 120, { mass: 0.5, radius: 25, color: '#1976d2' });
 }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Fixed force', 5, 60, 1, fixedForce, v => { fixedForce = v; });
-UI.slider(cp, 'Disturbance', 0, 60, 2, distStrength, v => { distStrength = v; });
-UI.slider(cp, 'Kp (measurer)', 0.5, 5, 0.1, kp, v => { kp = v; pid.kp = v; });
+UI.slider(cp, 'Torque', 1, 15, 0.5, torqueStrength, v => { torqueStrength = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 580, height: 110, window: 400,
-  colors: ['#ff9800', '#1976d2'], labels: ['guesser error', 'measurer error'],
-  title: 'Position error over time: open-loop vs closed-loop'
+  width: 580, height: 100, window: 400,
+  colors: ['#795548', '#1976d2'], labels: ['brushed speed', 'brushless speed'],
+  title: 'Speed comparison: brushed vs brushless'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Guesser pos', 'Measurer pos', 'Guesser err', 'Measurer err']);
+  ['Brushed speed', 'Brushless speed', 'Brush wear']);
 
-// wind gust: active between t=150..350
-function gust(t) {
-  return (t > 150 && t < 350) ? -distStrength : 0;
+function drawBrushed(c_ctx, cw, ch) {
+  c_ctx.clearRect(0, 0, cw, ch);
+  const cx = cw / 2, cy = ch / 2 - 10, R = 45;
+  // commutator ring (worn look)
+  const wearColor = 'rgb(' + Math.min(120 + wearA * 2, 200) + ',80,40)';
+  ctx_stroke(c_ctx, '#bbb', 3, () => c_ctx.arc(cx, cy, R + 6, 0, Math.PI * 2));
+  c_ctx.fillStyle = '#795548'; c_ctx.beginPath(); c_ctx.arc(cx, cy, R, 0, Math.PI * 2); c_ctx.fill();
+  // brushes
+  c_ctx.fillStyle = wearColor;
+  c_ctx.fillRect(cx - R - 14, cy - 6, 14, 12);
+  c_ctx.fillRect(cx + R, cy - 6, 14, 12);
+  // sparks if worn
+  if (wearA > 30 && Math.random() < 0.3) {
+    c_ctx.fillStyle = '#fff176';
+    c_ctx.beginPath(); c_ctx.arc(cx - R - 2, cy + (Math.random() - 0.5) * 10, 3, 0, Math.PI * 2); c_ctx.fill();
+    c_ctx.beginPath(); c_ctx.arc(cx + R + 2, cy + (Math.random() - 0.5) * 10, 3, 0, Math.PI * 2); c_ctx.fill();
+  }
+  // rotor arm
+  c_ctx.strokeStyle = '#fff'; c_ctx.lineWidth = 3;
+  c_ctx.beginPath();
+  c_ctx.moveTo(cx, cy);
+  c_ctx.lineTo(cx + (R - 4) * Math.cos(angleA), cy + (R - 4) * Math.sin(angleA));
+  c_ctx.stroke();
+  c_ctx.fillStyle = '#333'; c_ctx.font = '11px sans-serif'; c_ctx.textAlign = 'left';
+  c_ctx.fillText('speed: ' + angVelA.toFixed(1), 4, 16);
+  c_ctx.fillText('wear: ' + Math.min(wearA, 100).toFixed(0) + '%', 4, 30);
 }
 
-function drawBot(c_ctx, cw, ch, plant, targetX, label, color) {
+function ctx_stroke(c_ctx, color, lw, fn) {
+  c_ctx.strokeStyle = color; c_ctx.lineWidth = lw;
+  c_ctx.beginPath(); fn(); c_ctx.stroke();
+}
+
+function drawBrushless(c_ctx, cw, ch) {
   c_ctx.clearRect(0, 0, cw, ch);
-  c_ctx.strokeStyle = '#ddd'; c_ctx.setLineDash([4, 4]);
-  c_ctx.beginPath(); c_ctx.moveTo(targetX, 0); c_ctx.lineTo(targetX, ch); c_ctx.stroke();
-  c_ctx.setLineDash([]);
-  c_ctx.fillStyle = '#4caf50'; c_ctx.beginPath(); c_ctx.arc(targetX, ch / 2, 5, 0, Math.PI * 2); c_ctx.fill();
-  drawBody(c_ctx, plant);
+  const sector = Math.floor((rotorB.angle / (Math.PI / 3)) % 6);
+  const cx = cw / 2, cy = ch / 2 - 10, R = 45;
+  ctx_stroke(c_ctx, '#bbb', 3, () => c_ctx.arc(cx, cy, R + 6, 0, Math.PI * 2));
+  c_ctx.fillStyle = '#1976d2'; c_ctx.beginPath(); c_ctx.arc(cx, cy, R, 0, Math.PI * 2); c_ctx.fill();
+  // sector indicator
+  const sectorColors = ['#4caf50', '#e53935', '#4caf50', '#e53935', '#4caf50', '#e53935'];
+  c_ctx.strokeStyle = sectorColors[sector % 6]; c_ctx.lineWidth = 4;
+  c_ctx.beginPath(); c_ctx.arc(cx, cy, R + 6, 0, Math.PI * 2); c_ctx.stroke();
+  c_ctx.strokeStyle = '#fff'; c_ctx.lineWidth = 3;
+  c_ctx.beginPath();
+  c_ctx.moveTo(cx, cy);
+  c_ctx.lineTo(cx + (R - 4) * Math.cos(rotorB.angle), cy + (R - 4) * Math.sin(rotorB.angle));
+  c_ctx.stroke();
   c_ctx.fillStyle = '#333'; c_ctx.font = '11px sans-serif'; c_ctx.textAlign = 'left';
-  c_ctx.fillText(label, 4, 16);
-  c_ctx.fillText('pos=' + plant.pos.x.toFixed(0) + ' err=' + (plant.pos.x - targetX).toFixed(0), 4, 30);
+  c_ctx.fillText('speed: ' + rotorB.angularVel.toFixed(1), 4, 16);
+  c_ctx.fillText('sector: ' + sector, 4, 30);
+}
+
+function stepBrushed() {
+  const brushFriction = 0.02 + wearA * 0.001;
+  angVelA += (torqueStrength - brushFriction * angVelA * 10) * 0.016;
+  if (angVelA < 0) angVelA = 0;
+  angleA += angVelA * 0.016;
+  wearA += 0.05;
+}
+
+function stepBrushless() {
+  const sector = Math.floor((rotorB.angle / (Math.PI / 3)) % 6);
+  const torque = sector % 2 === 0 ? torqueStrength : -torqueStrength;
+  rotorB.clearForces();
+  rotorB.addTorque(torque);
+  rotorB.step(0.016);
 }
 
 function draw() {
   if (!state.paused) {
-    t++;
-    const g = gust(t);
-
-    guesser.clearForces();
-    guesser.addForce(new Vec(fixedForce, 0));
-    guesser.addForce(new Vec(g, 0));
-    guesser.addForce(guesser.vel.mul(-1.5));
-    guesser.step(0.016);
-    if (guesser.pos.x > 270) { guesser.pos.x = 270; guesser.vel.x = 0; }
-
-    measurer.clearForces();
-    measurer.addForce(new Vec(pid.update(measurer.pos.x, 0.016), 0));
-    measurer.addForce(new Vec(g, 0));
-    measurer.addForce(measurer.vel.mul(-1.5));
-    measurer.step(0.016);
-    if (measurer.pos.x > 270) { measurer.pos.x = 270; measurer.vel.x = 0; }
-    if (measurer.pos.x < 0) { measurer.pos.x = 0; measurer.vel.x = 0; }
-
-    plot.push(0, guesser.pos.x - TARGET);
-    plot.push(1, measurer.pos.x - TARGET);
-    met.update([guesser.pos.x, measurer.pos.x, guesser.pos.x - TARGET, measurer.pos.x - TARGET]);
+    stepBrushed();
+    stepBrushless();
+    plot.push(0, angVelA);
+    plot.push(1, rotorB.angularVel);
+    met.update([angVelA, rotorB.angularVel, Math.min(wearA, 100)]);
   }
-  drawBot(ctxA, canvasA.width, canvasA.height, guesser, TARGET, 'Guesser (fixed cmd)', '#ff9800');
-  drawBot(ctxB, canvasB.width, canvasB.height, measurer, TARGET, 'Measurer (feedback)', '#1976d2');
+  drawBrushed(ctxA, canvasA.width, canvasA.height);
+  drawBrushless(ctxB, canvasB.width, canvasB.height);
   requestAnimationFrame(draw);
 }
 draw();

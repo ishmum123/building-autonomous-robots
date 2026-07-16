@@ -1,0 +1,16 @@
+- generic [active] [ref=f4e1]:
+  - 'heading "Chapter 05: Why You Need a Gate" [level=1] [ref=f4e2]'
+  - paragraph [ref=f4e3]: A switch decides when; a diode decides which way.
+  - generic [ref=f4e5]:
+    - 'button "Switch: OPEN" [ref=f4e6] [cursor=pointer]'
+    - 'button "Polarity: FORWARD" [ref=f4e7] [cursor=pointer]'
+    - generic [ref=f4e8]:
+      - button "Pause" [ref=f4e9] [cursor=pointer]
+      - button "Reset" [ref=f4e10] [cursor=pointer]
+  - generic [ref=f4e15]:
+    - generic [ref=f4e16]: "Switch: OPEN"
+    - generic [ref=f4e17]: "Polarity: FWD"
+    - generic [ref=f4e18]: "Current (A): 0.00"
+  - paragraph [ref=f4e19]:
+    - link "← Home" [ref=f4e20] [cursor=pointer]:
+      - /url: ../../index.html

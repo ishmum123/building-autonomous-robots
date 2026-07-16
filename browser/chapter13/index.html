@@ -2,102 +2,84 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Chapter 13: Why Feedback Changes Everything</title>
+<title>Chapter 13: Why Motors Stop</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 1rem; background: #fff; }
   h1 { font-size: 1.4rem; margin-bottom: 0.2rem; }
-  .key { color: #555; max-width: 700px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  .key { color: #555; max-width: 640px; margin: 0 auto 0.5rem auto; font-size: 0.95rem; }
+  canvas { border: 1px solid #ccc; background: #fafafa; display: block; margin: 0 auto; }
   .home { margin-top: 1rem; font-size: 0.85rem; }
 </style>
 </head>
 <body>
-<h1>Chapter 13: Why Feedback Changes Everything</h1>
-<p class="key">Without feedback an open-loop system drifts; with feedback it corrects. Both receive the same disturbance.</p>
+<h1>Chapter 13: Why Motors Stop</h1>
+<p class="key">Back-EMF opposes current as speed rises — motor saturates at a natural limit set by voltage and resistance.</p>
 <div id="controls"></div>
-<div id="ab-wrap"></div>
+<canvas id="sim" width="600" height="220"></canvas>
 <div id="plot-wrap"></div>
 <div id="metrics-wrap"></div>
 <script src="../common/engine.js"></script>
 <script src="../common/ui.js"></script>
 <script>
-const TARGET = 240;
-let kp = 1.0, distStrength = 30;
+const canvas = document.getElementById('sim');
+const ctx = canvas.getContext('2d');
 
-const ab = UI.sideBySide(document.getElementById('ab-wrap'), 'Open-loop (no feedback)', 'Closed-loop (feedback)', 285, 200);
-const { canvasA, ctxA, canvasB, ctxB } = ab;
+let voltage = 5, friction = 0.02;
+let speed, angle;
 
-let openPlant, closedPlant, pid, t;
-function initState() {
-  openPlant   = new Body('open',   30, 100, { mass: 1, radius: 12, color: '#ff9800' });
-  closedPlant = new Body('closed', 30, 100, { mass: 1, radius: 12, color: '#1976d2' });
-  pid = new PID(kp, 0.1, 0.4, TARGET);
-  t = 0;
-}
+function initState() { speed = 0; angle = 0; }
 initState();
 
 const ctrl = document.getElementById('controls');
 const cp = UI.panel(ctrl);
-UI.slider(cp, 'Kp', 0.2, 4, 0.1, kp, v => { kp = v; pid.kp = v; });
-UI.slider(cp, 'Disturbance', 0, 80, 2, distStrength, v => { distStrength = v; });
+UI.slider(cp, 'Voltage (V)', 0, 12, 0.5, voltage, v => { voltage = v; });
+UI.slider(cp, 'Friction', 0, 0.1, 0.005, friction, v => { friction = v; });
 const { state } = UI.pauseResetBar(cp, () => { initState(); plot.clear(); });
 
 const plot = UI.stripPlot(document.getElementById('plot-wrap'), {
-  width: 580, height: 110, window: 400,
-  colors: ['#ff9800', '#1976d2'], labels: ['open-loop pos', 'closed-loop pos'],
-  title: 'Position under same disturbance: open-loop vs closed-loop'
+  width: 600, height: 110, window: 400,
+  colors: ['#1976d2', '#e53935', '#4caf50'],
+  labels: ['speed', 'back-EMF', 'current'],
+  title: 'Speed, Back-EMF & Current over time'
 });
 
 const met = UI.metrics(document.getElementById('metrics-wrap'),
-  ['Open pos', 'Closed pos', 'Open err', 'Closed err']);
-
-// disturbance: a periodic sidewind
-function disturbance(t) {
-  return distStrength * (Math.sin(t * 0.05) > 0.5 ? 1 : 0);
-}
-
-function drawPlant(c_ctx, cw, ch, plant, targetX, label, color) {
-  c_ctx.clearRect(0, 0, cw, ch);
-  c_ctx.strokeStyle = '#ddd'; c_ctx.setLineDash([4, 4]);
-  c_ctx.beginPath(); c_ctx.moveTo(targetX, 0); c_ctx.lineTo(targetX, ch); c_ctx.stroke();
-  c_ctx.setLineDash([]);
-  drawBody(c_ctx, plant);
-  c_ctx.fillStyle = '#4caf50'; c_ctx.beginPath(); c_ctx.arc(targetX, ch / 2, 5, 0, Math.PI * 2); c_ctx.fill();
-  const err = Math.abs(plant.pos.x - targetX);
-  c_ctx.fillStyle = err < 5 ? '#4caf50' : '#e53935';
-  c_ctx.fillRect(plant.pos.x, ch / 2 - 4, plant.pos.x < targetX ? err : -err, 3);
-  c_ctx.fillStyle = '#333'; c_ctx.font = '11px sans-serif'; c_ctx.textAlign = 'left';
-  c_ctx.fillText(label, 4, 16);
-  c_ctx.fillText('err=' + (plant.pos.x - targetX).toFixed(1), 4, 30);
-}
+  ['Speed (rad/s)', 'Back-EMF', 'Current', 'Torque']);
 
 function draw() {
   if (!state.paused) {
-    t++;
-    const d = disturbance(t);
+    const backEmf = 0.8 * speed;
+    const current = (voltage - backEmf) / 1.0;
+    const torque = 0.1 * current;
+    speed += (torque - friction * speed) * 0.016;
+    if (speed < 0) speed = 0;
+    angle += speed * 0.016;
 
-    // Open loop: fixed force, no measurement
-    openPlant.clearForces();
-    openPlant.addForce(new Vec(20, 0));         // fixed command
-    openPlant.addForce(new Vec(d, 0));           // unmeasured disturbance
-    openPlant.addForce(openPlant.vel.mul(-1));
-    openPlant.step(0.016);
-    if (openPlant.pos.x > 270) { openPlant.pos.x = 270; openPlant.vel.x = 0; }
-
-    // Closed loop: feedback corrects
-    closedPlant.clearForces();
-    closedPlant.addForce(new Vec(pid.update(closedPlant.pos.x, 0.016), 0));
-    closedPlant.addForce(new Vec(d, 0));         // same disturbance
-    closedPlant.addForce(closedPlant.vel.mul(-1));
-    closedPlant.step(0.016);
-    if (closedPlant.pos.x > 270) { closedPlant.pos.x = 270; closedPlant.vel.x *= -0.5; }
-    if (closedPlant.pos.x < 0) { closedPlant.pos.x = 0; closedPlant.vel.x = 0; }
-
-    plot.push(0, openPlant.pos.x);
-    plot.push(1, closedPlant.pos.x);
-    met.update([openPlant.pos.x, closedPlant.pos.x, openPlant.pos.x - TARGET, closedPlant.pos.x - TARGET]);
+    plot.push(0, speed);
+    plot.push(1, backEmf);
+    plot.push(2, Math.max(current, 0));
+    met.update([speed, backEmf, Math.max(current, 0), torque]);
   }
-  drawPlant(ctxA, canvasA.width, canvasA.height, openPlant, TARGET, 'Open-loop', '#ff9800');
-  drawPlant(ctxB, canvasB.width, canvasB.height, closedPlant, TARGET, 'Closed-loop (Kp=' + kp.toFixed(1) + ')', '#1976d2');
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const cx = 300, cy = 110, R = 50;
+  ctx.fillStyle = '#1976d2';
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + (R - 4) * Math.cos(angle), cy + (R - 4) * Math.sin(angle));
+  ctx.stroke();
+  // speed bar
+  const maxSpeed = voltage / (0.8 + friction);
+  const barW = Math.min((speed / maxSpeed) * 300, 300);
+  ctx.fillStyle = '#e3f2fd'; ctx.fillRect(150, 185, 300, 16);
+  ctx.fillStyle = '#1976d2'; ctx.fillRect(150, 185, barW, 16);
+  ctx.fillStyle = '#333'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Speed', 300, 214);
+  ctx.textAlign = 'left';
+  ctx.fillText('V=' + voltage.toFixed(1) + 'V  back-EMF saturates motor at ~' + (voltage / 0.8).toFixed(1) + ' rad/s', 8, 20);
+
   requestAnimationFrame(draw);
 }
 draw();

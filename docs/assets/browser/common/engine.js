@@ -257,8 +257,8 @@ function astar(grid, start, goal) {
 
     for (const neighbor of grid.neighbors(current)) {
       const nKey = neighbor.join(',');
-      const tentative = (gScore.get(currentKey) || Infinity) + 1;
-      if (tentative < (gScore.get(nKey) || Infinity)) {
+      const tentative = gScore.get(currentKey) + 1;
+      if (tentative < (gScore.has(nKey) ? gScore.get(nKey) : Infinity)) {
         cameFrom.set(nKey, current);
         gScore.set(nKey, tentative);
         fScore.set(nKey, tentative + grid.heuristic(neighbor, goal));

@@ -63,8 +63,8 @@ function astarTracked(grid, start, goal) {
     }
     for (const nb of grid.neighbors(cur)) {
       const nk = nb.join(',');
-      const ng = (g.get(ck) || 0) + 1;
-      if (ng < (g.get(nk) || Infinity)) {
+      const ng = g.get(ck) + 1;
+      if (ng < (g.has(nk) ? g.get(nk) : Infinity)) {
         came.set(nk, cur); g.set(nk, ng);
         open.push([ng + grid.heuristic(nb, goal), nk, nb]);
       }

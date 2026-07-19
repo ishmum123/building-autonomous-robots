@@ -1,0 +1,909 @@
+/* ==========================================================================
+   Copper & Ink — Laboratory Notebook Theme
+   Building Autonomous Robots From Scratch
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Google Fonts & Font Variables
+   -------------------------------------------------------------------------- */
+
+:root {
+  --md-text-font: "Source Serif 4", Georgia, serif;
+  --md-code-font: "IBM Plex Mono", "Courier New", monospace;
+}
+
+/* --------------------------------------------------------------------------
+   2. Colour Palette — Light Scheme (warm paper)
+   -------------------------------------------------------------------------- */
+
+[data-md-color-scheme="copper-ink"] {
+  /* Primary / accent */
+  --md-primary-fg-color:          #7a3d18;
+  --md-primary-fg-color--light:   #b45f2a;
+  --md-primary-fg-color--dark:    #5c2d0e;
+  --md-primary-bg-color:          #faf6ef;
+  --md-primary-bg-color--light:   #faf6ef;
+
+  --md-accent-fg-color:           #2e6e63;
+  --md-accent-fg-color--transparent: rgba(46,110,99,0.12);
+
+  /* Page background — warm paper with subtle noise */
+  --md-default-bg-color:          #faf6ef;
+  --md-default-fg-color:          #1a1612;
+  --md-default-fg-color--light:   #3d3229;
+  --md-default-fg-color--lighter: #6b5a4e;
+  --md-default-fg-color--lightest:#c4b49e;
+
+  /* Code block surface */
+  --md-code-bg-color:             #f0ead9;
+  --md-code-fg-color:             #2c1f12;
+
+  /* Typeset link colour */
+  --md-typeset-a-color:           #2e6e63;
+
+  /* Copper accent shorthand */
+  --copper:                       #c9702f;
+  --copper-dark:                  #7a3d18;
+  --teal:                         #2e6e63;
+  --ink:                          #1a1612;
+  --paper:                        #faf6ef;
+  --paper-mid:                    #f0ead9;
+  --paper-dark:                   #e0d5c1;
+
+  /* Footer */
+  --md-footer-bg-color:           #2c1f12;
+  --md-footer-bg-color--dark:     #1a1108;
+  --md-footer-fg-color:           #d4c4a8;
+  --md-footer-fg-color--light:    #a08060;
+  --md-footer-fg-color--lighter:  #6b5040;
+
+  /* Shadows */
+  --md-shadow-z1: 0 2px 8px rgba(90,50,20,0.12);
+  --md-shadow-z2: 0 4px 16px rgba(90,50,20,0.18);
+  --md-shadow-z3: 0 8px 32px rgba(90,50,20,0.24);
+}
+
+/* --------------------------------------------------------------------------
+   3. Colour Palette — Dark Scheme (workshop at night)
+   -------------------------------------------------------------------------- */
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:          #c9702f;
+  --md-primary-fg-color--light:   #e0924d;
+  --md-primary-fg-color--dark:    #a05520;
+  --md-primary-bg-color:          #1a1a24;
+  --md-primary-bg-color--light:   #1a1a24;
+
+  --md-accent-fg-color:           #4db8a8;
+  --md-accent-fg-color--transparent: rgba(77,184,168,0.12);
+
+  --md-default-bg-color:          #141420;
+  --md-default-fg-color:          #e8dfd0;
+  --md-default-fg-color--light:   #c4b49e;
+  --md-default-fg-color--lighter: #8a7a6a;
+  --md-default-fg-color--lightest:#3d3350;
+
+  --md-code-bg-color:             #1e1e2e;
+  --md-code-fg-color:             #e8dfd0;
+
+  --md-typeset-a-color:           #4db8a8;
+
+  --copper:                       #e0924d;
+  --copper-dark:                  #c9702f;
+  --teal:                         #4db8a8;
+  --ink:                          #e8dfd0;
+  --paper:                        #141420;
+  --paper-mid:                    #1e1e2e;
+  --paper-dark:                   #0e0e1a;
+
+  --md-footer-bg-color:           #0e0e1a;
+  --md-footer-bg-color--dark:     #08080f;
+  --md-footer-fg-color:           #c4b49e;
+  --md-footer-fg-color--light:    #8a7a6a;
+  --md-footer-fg-color--lighter:  #4a3a30;
+
+  --md-shadow-z1: 0 2px 8px rgba(0,0,0,0.4);
+  --md-shadow-z2: 0 4px 16px rgba(0,0,0,0.5);
+  --md-shadow-z3: 0 8px 32px rgba(0,0,0,0.6);
+}
+
+/* --------------------------------------------------------------------------
+   4. Paper Texture (CSS-only — layered SVG noise + subtle gradient)
+   -------------------------------------------------------------------------- */
+
+[data-md-color-scheme="copper-ink"] body {
+  background-color: var(--paper);
+  /* Subtle grain via SVG turbulence data URI */
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E"),
+    linear-gradient(160deg, #fdfaf4 0%, #f7f0e4 50%, #faf6ef 100%);
+}
+
+[data-md-color-scheme="slate"] body {
+  background-color: var(--paper);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.06'/%3E%3C/svg%3E"),
+    linear-gradient(160deg, #18182a 0%, #141420 60%, #101018 100%);
+}
+
+/* --------------------------------------------------------------------------
+   5. Global Typography
+   -------------------------------------------------------------------------- */
+
+body {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 17px;
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-optical-sizing: auto;
+}
+
+/* Base typeset measure */
+.md-typeset {
+  font-size: 1.0625rem; /* ~17px */
+  line-height: 1.75;
+  color: var(--md-default-fg-color);
+}
+
+/* --------------------------------------------------------------------------
+   6. Headings — Fraunces
+   -------------------------------------------------------------------------- */
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
+  font-family: "Fraunces", Georgia, serif;
+  font-optical-sizing: auto;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+/* H1 — large italic Fraunces with copper rule beneath */
+.md-typeset h1 {
+  font-size: 2.8rem;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1.1;
+  margin-bottom: 0.5em;
+  padding-bottom: 0.4em;
+  border-bottom: none;
+  position: relative;
+}
+
+.md-typeset h1::after {
+  content: "";
+  display: block;
+  margin-top: 0.35em;
+  height: 3px;
+  width: 5rem;
+  background: linear-gradient(90deg, var(--copper) 0%, var(--copper-dark) 60%, transparent 100%);
+  border-radius: 2px;
+}
+
+/* H2 — small-caps Fraunces with copper left accent */
+.md-typeset h2 {
+  font-size: 1.45rem;
+  font-weight: 600;
+  font-style: normal;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  margin-top: 2.2em;
+  padding-left: 0.85em;
+  border-left: 3px solid var(--copper);
+  border-bottom: none;
+}
+
+/* H3 — upright Fraunces, teal accent */
+.md-typeset h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--copper-dark);
+}
+
+[data-md-color-scheme="slate"] .md-typeset h3 {
+  color: var(--copper);
+}
+
+.md-typeset h4 {
+  font-size: 1.0rem;
+  font-weight: 600;
+  font-family: "IBM Plex Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--teal);
+}
+
+/* --------------------------------------------------------------------------
+   7. Body text — Source Serif 4
+   -------------------------------------------------------------------------- */
+
+.md-typeset p,
+.md-typeset li {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+}
+
+/* Links */
+.md-typeset a {
+  color: var(--teal);
+  text-decoration-color: transparent;
+  text-decoration-line: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s, text-decoration-color 0.15s;
+}
+
+.md-typeset a:hover {
+  color: var(--copper);
+  text-decoration-color: var(--copper);
+}
+
+/* --------------------------------------------------------------------------
+   8. Header / Navigation bar
+   -------------------------------------------------------------------------- */
+
+.md-header {
+  background-color: var(--md-primary-fg-color--dark) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.06), 0 2px 12px rgba(0,0,0,0.28);
+  border-bottom: 2px solid var(--copper);
+}
+
+[data-md-color-scheme="slate"] .md-header {
+  background-color: #0e0e1a !important;
+  border-bottom: 2px solid var(--copper-dark);
+}
+
+.md-header__title {
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.05rem;
+  letter-spacing: 0.01em;
+}
+
+/* Nav tabs */
+.md-tabs {
+  background-color: var(--md-primary-fg-color--dark);
+  border-bottom: 1px solid rgba(201,112,47,0.3);
+}
+
+[data-md-color-scheme="slate"] .md-tabs {
+  background-color: #13131f;
+  border-bottom: 1px solid rgba(201,112,47,0.2);
+}
+
+.md-tabs__link {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.78;
+  transition: opacity 0.2s;
+}
+
+.md-tabs__link:hover,
+.md-tabs__link--active {
+  opacity: 1 !important;
+  color: var(--copper) !important;
+}
+
+.md-tabs__link--active::after {
+  background-color: var(--copper);
+}
+
+/* --------------------------------------------------------------------------
+   9. Sidebar / Navigation
+   -------------------------------------------------------------------------- */
+
+.md-nav {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.795rem;
+}
+
+.md-nav__title {
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+  font-size: 0.9rem;
+  color: var(--copper);
+  letter-spacing: 0.01em;
+}
+
+.md-nav__item--active > .md-nav__link {
+  color: var(--copper) !important;
+  font-weight: 600;
+}
+
+.md-nav__link:hover {
+  color: var(--copper) !important;
+}
+
+/* Sidebar scroll track */
+.md-sidebar__scrollwrap::-webkit-scrollbar {
+  width: 4px;
+}
+.md-sidebar__scrollwrap::-webkit-scrollbar-thumb {
+  background: var(--copper);
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+/* --------------------------------------------------------------------------
+   10. Search
+   -------------------------------------------------------------------------- */
+
+.md-search__form {
+  background-color: rgba(255,255,255,0.1);
+  border: 1px solid rgba(201,112,47,0.4);
+  border-radius: 4px;
+}
+
+[data-md-color-scheme="slate"] .md-search__form {
+  background-color: rgba(255,255,255,0.05);
+  border-color: rgba(201,112,47,0.3);
+}
+
+.md-search__input::placeholder {
+  color: rgba(255,255,255,0.5);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+}
+
+.md-search-result__meta {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.73rem;
+}
+
+.md-search-result__title {
+  font-family: "Fraunces", Georgia, serif;
+}
+
+/* --------------------------------------------------------------------------
+   11. Content — max readable measure
+   -------------------------------------------------------------------------- */
+
+.md-content__inner {
+  max-width: 46rem;
+  padding: 1.5rem 1.5rem 3rem;
+}
+
+/* --------------------------------------------------------------------------
+   12. Simulation iframes — "Instrument Panel"
+   -------------------------------------------------------------------------- */
+
+article iframe,
+.md-typeset iframe {
+  display: block;
+  width: 100%;
+  border: none !important;
+  border-radius: 10px !important;
+  margin: 2rem 0 1.5rem;
+  background: var(--paper-dark);
+
+  /* Copper top-edge accent via box-shadow + outline trick */
+  box-shadow:
+    0 -3px 0 0 var(--copper),                /* copper top accent */
+    0 1px 0 0 var(--paper-dark),
+    inset 0 1px 3px rgba(0,0,0,0.10),
+    0 4px 20px rgba(90,50,20,0.15);
+
+  outline: 1.5px solid var(--paper-dark);
+  overflow: hidden;
+}
+
+[data-md-color-scheme="slate"] article iframe,
+[data-md-color-scheme="slate"] .md-typeset iframe {
+  background: #0e0e1a;
+  box-shadow:
+    0 -3px 0 0 var(--copper-dark),
+    0 1px 0 0 #0e0e1a,
+    inset 0 1px 3px rgba(0,0,0,0.4),
+    0 4px 24px rgba(0,0,0,0.5);
+  outline-color: #1e1e2e;
+}
+
+/* Instrument panel label-strip above each iframe */
+article iframe::before {
+  content: "";
+}
+
+/* Wrap iframes in a light panel container feel */
+.md-typeset iframe {
+  margin-top: 2.2rem;
+  border-top: 3px solid var(--copper) !important;
+}
+
+/* --------------------------------------------------------------------------
+   13. Code blocks — IBM Plex Mono
+   -------------------------------------------------------------------------- */
+
+.md-typeset code,
+.md-typeset pre,
+.md-typeset kbd {
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+  font-size: 0.875rem;
+}
+
+.md-typeset pre {
+  background: var(--paper-mid) !important;
+  border: 1px solid var(--paper-dark);
+  border-left: 3px solid var(--copper);
+  border-radius: 6px;
+  box-shadow: var(--md-shadow-z1);
+}
+
+[data-md-color-scheme="slate"] .md-typeset pre {
+  background: #1e1e2e !important;
+  border-color: #2a2a3e;
+  border-left-color: var(--copper-dark);
+}
+
+.md-typeset code {
+  background: var(--paper-mid);
+  color: var(--copper-dark);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  border: 1px solid var(--paper-dark);
+}
+
+[data-md-color-scheme="slate"] .md-typeset code {
+  background: #1e1e2e;
+  color: var(--copper);
+  border-color: #2a2a3e;
+}
+
+/* Code copy button */
+.md-clipboard {
+  color: var(--copper);
+}
+
+/* Syntax highlight adjustments */
+.highlight .hll { background: rgba(201,112,47,0.15); }
+
+/* --------------------------------------------------------------------------
+   14. Blockquotes
+   -------------------------------------------------------------------------- */
+
+.md-typeset blockquote {
+  border-left: 4px solid var(--copper);
+  background: var(--paper-mid);
+  padding: 0.75em 1.25em;
+  border-radius: 0 6px 6px 0;
+  margin: 1.5em 0;
+  font-style: italic;
+  color: var(--md-default-fg-color--light);
+}
+
+[data-md-color-scheme="slate"] .md-typeset blockquote {
+  background: #1a1a2a;
+  border-left-color: var(--copper-dark);
+}
+
+/* --------------------------------------------------------------------------
+   15. Admonitions
+   -------------------------------------------------------------------------- */
+
+.md-typeset .admonition {
+  border-radius: 6px;
+  border-left-width: 4px;
+  box-shadow: var(--md-shadow-z1);
+  font-size: 0.95rem;
+}
+
+.md-typeset .admonition-title {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Note / tip: teal */
+.md-typeset .admonition.note,
+.md-typeset details.note {
+  border-left-color: var(--teal);
+}
+.md-typeset .admonition.tip,
+.md-typeset details.tip {
+  border-left-color: var(--teal);
+}
+
+/* Warning / danger: copper */
+.md-typeset .admonition.warning,
+.md-typeset details.warning {
+  border-left-color: var(--copper);
+}
+.md-typeset .admonition.danger,
+.md-typeset details.danger {
+  border-left-color: #a01820;
+}
+
+/* --------------------------------------------------------------------------
+   16. Tables
+   -------------------------------------------------------------------------- */
+
+.md-typeset table {
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: var(--md-shadow-z1);
+  font-size: 0.92rem;
+  border-collapse: collapse;
+}
+
+.md-typeset table th {
+  background: var(--copper-dark);
+  color: #faf6ef;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.65em 1em;
+}
+
+[data-md-color-scheme="slate"] .md-typeset table th {
+  background: var(--copper-dark);
+  color: #faf6ef;
+}
+
+.md-typeset table td {
+  padding: 0.55em 1em;
+  border-bottom: 1px solid var(--paper-dark);
+}
+
+[data-md-color-scheme="slate"] .md-typeset table td {
+  border-bottom-color: #2a2a3e;
+}
+
+.md-typeset table tr:hover {
+  background: var(--paper-mid);
+}
+
+[data-md-color-scheme="slate"] .md-typeset table tr:hover {
+  background: #1e1e2e;
+}
+
+/* --------------------------------------------------------------------------
+   17. Footer
+   -------------------------------------------------------------------------- */
+
+.md-footer {
+  background-color: var(--md-footer-bg-color);
+  border-top: 2px solid var(--copper-dark);
+}
+
+.md-footer-meta {
+  background-color: var(--md-footer-bg-color--dark);
+}
+
+.md-footer__title {
+  font-family: "Fraunces", Georgia, serif;
+  font-style: italic;
+}
+
+.md-footer__direction {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.73rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.7;
+}
+
+/* --------------------------------------------------------------------------
+   18. Table of Contents
+   -------------------------------------------------------------------------- */
+
+.md-nav--secondary .md-nav__title {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.73rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--copper);
+  background: transparent;
+  box-shadow: none;
+  padding-bottom: 0.4em;
+  border-bottom: 1px solid var(--paper-dark);
+}
+
+[data-md-color-scheme="slate"] .md-nav--secondary .md-nav__title {
+  border-bottom-color: #2a2a3e;
+}
+
+.md-nav--secondary .md-nav__link {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+}
+
+.md-nav--secondary .md-nav__link--active {
+  color: var(--copper) !important;
+}
+
+/* --------------------------------------------------------------------------
+   19. Focus / Accessibility
+   -------------------------------------------------------------------------- */
+
+:focus-visible {
+  outline: 2px solid var(--copper);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   20. Homepage — Part Cards Grid
+   -------------------------------------------------------------------------- */
+
+.home-hero {
+  text-align: left;
+  padding: 3rem 0 2.5rem;
+  max-width: 46rem;
+}
+
+.home-hero__eyebrow {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--copper);
+  margin-bottom: 0.8rem;
+}
+
+.home-hero__title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 3.2rem;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1.05;
+  color: var(--ink);
+  margin: 0 0 1rem;
+  letter-spacing: -0.02em;
+}
+
+[data-md-color-scheme="slate"] .home-hero__title {
+  color: #e8dfd0;
+}
+
+.home-hero__subtitle {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 1.15rem;
+  line-height: 1.65;
+  color: var(--md-default-fg-color--light);
+  max-width: 38rem;
+  margin: 0 0 2rem;
+}
+
+.home-hero__rule {
+  display: block;
+  height: 3px;
+  width: 6rem;
+  background: linear-gradient(90deg, var(--copper) 0%, transparent 100%);
+  border: none;
+  border-radius: 2px;
+  margin: 1.5rem 0 2.5rem;
+}
+
+/* Part cards grid */
+.parts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+  max-width: 52rem;
+  margin: 0;
+  padding: 0;
+}
+
+.part-card {
+  background: var(--paper-mid);
+  border: 1px solid var(--paper-dark);
+  border-top: 3px solid var(--copper);
+  border-radius: 8px;
+  padding: 1.25rem 1.4rem 1.4rem;
+  transition: box-shadow 0.2s, transform 0.2s, border-top-color 0.2s;
+  box-shadow: var(--md-shadow-z1);
+
+  /* Staggered fade-up animation */
+  opacity: 0;
+  transform: translateY(18px);
+  animation: cardFadeUp 0.45s ease forwards;
+}
+
+[data-md-color-scheme="slate"] .part-card {
+  background: #1a1a2a;
+  border-color: #2a2a3e;
+  border-top-color: var(--copper-dark);
+}
+
+.part-card:hover {
+  box-shadow: var(--md-shadow-z2);
+  transform: translateY(-2px);
+  border-top-color: var(--teal);
+}
+
+/* Stagger delays */
+.part-card:nth-child(1) { animation-delay: 0.05s; }
+.part-card:nth-child(2) { animation-delay: 0.10s; }
+.part-card:nth-child(3) { animation-delay: 0.15s; }
+.part-card:nth-child(4) { animation-delay: 0.20s; }
+.part-card:nth-child(5) { animation-delay: 0.25s; }
+.part-card:nth-child(6) { animation-delay: 0.30s; }
+.part-card:nth-child(7) { animation-delay: 0.35s; }
+
+@keyframes cardFadeUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.part-card__number {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--copper);
+  margin-bottom: 0.35rem;
+}
+
+.part-card__title {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 0.25rem;
+  line-height: 1.2;
+}
+
+[data-md-color-scheme="slate"] .part-card__title {
+  color: #e8dfd0;
+}
+
+.part-card__count {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  color: var(--md-default-fg-color--lighter);
+  margin-bottom: 0.85rem;
+}
+
+.part-card__chapters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--paper-dark);
+  padding-top: 0.65rem;
+}
+
+[data-md-color-scheme="slate"] .part-card__chapters {
+  border-top-color: #2a2a3e;
+}
+
+.part-card__chapters li {
+  margin: 0;
+  padding: 0;
+}
+
+.part-card__chapters a {
+  display: block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.735rem;
+  color: var(--md-default-fg-color--light) !important;
+  text-decoration: none !important;
+  padding: 0.2rem 0;
+  line-height: 1.4;
+  transition: color 0.15s;
+}
+
+.part-card__chapters a:hover {
+  color: var(--copper) !important;
+}
+
+/* Home quick-links row */
+.home-links {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin: 2.5rem 0 1rem;
+}
+
+.home-links a {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--paper) !important;
+  background: var(--copper-dark);
+  padding: 0.5em 1.1em;
+  border-radius: 4px;
+  text-decoration: none !important;
+  transition: background 0.2s, transform 0.15s;
+  display: inline-block;
+}
+
+.home-links a:hover {
+  background: var(--copper);
+  transform: translateY(-1px);
+}
+
+.home-links a.secondary {
+  background: transparent;
+  color: var(--copper) !important;
+  border: 1.5px solid var(--copper);
+}
+
+.home-links a.secondary:hover {
+  background: rgba(201,112,47,0.12);
+}
+
+/* Hide toc on homepage */
+.md-content__inner--no-toc ~ .md-sidebar--secondary {
+  display: none;
+}
+
+/* Part intro section */
+.parts-section-title {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--teal);
+  margin: 3rem 0 1.2rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--paper-dark);
+}
+
+[data-md-color-scheme="slate"] .parts-section-title {
+  border-bottom-color: #2a2a3e;
+}
+
+/* --------------------------------------------------------------------------
+   21. Reduced motion
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .part-card {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   22. Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .home-hero__title {
+    font-size: 2.2rem;
+  }
+
+  .md-typeset h1 {
+    font-size: 2rem;
+  }
+
+  .parts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   23. Colour-scheme toggle button styling
+   -------------------------------------------------------------------------- */
+
+.md-header__button[for="__palette"] {
+  color: var(--copper);
+}
+
+/* --------------------------------------------------------------------------
+   24. Selection highlight
+   -------------------------------------------------------------------------- */
+
+::selection {
+  background: rgba(201,112,47,0.25);
+  color: var(--ink);
+}
+
+[data-md-color-scheme="slate"] ::selection {
+  background: rgba(77,184,168,0.25);
+  color: #e8dfd0;
+}

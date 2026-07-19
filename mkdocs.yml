@@ -1,11 +1,39 @@
 site_name: Building Autonomous Robots From Scratch
+site_description: "Learn robotics the way humanity could have invented it — from electrons to autonomy, one discovery at a time."
+
 theme:
   name: material
+  custom_dir: overrides
+  font: false
+  palette:
+    - scheme: copper-ink
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
 plugins:
   - search
+
+extra_css:
+  - assets/stylesheets/extra.css
+
 validation:
   links:
     not_found: ignore
+
 nav:
   - Home: index.md
   - Philosophy: philosophy.md
